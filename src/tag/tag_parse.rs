@@ -4,13 +4,13 @@ use std::collections::HashSet;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct TagPosition {
     pub tag: String,
     pub index: usize, // 字符下标
 }
 
-#[derive(Debug, Serialize, Deserialize,Clone)]
+#[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct TagFinalPosition {
     pub tag: String,
     pub start: usize,
@@ -272,3 +272,31 @@ pub fn test2(template:&str,tag_final_position: Result<Vec<TagFinalPosition>, Str
 // pub fn get_child(template:&str,tag_final_position:Vec<TagFinalPosition>) -> Result<String, String> {
 //
 // }
+
+#[cfg(test)]
+mod tests {
+    use crate::tag::tag_parse::{build_tag_tree, calculate_tag_final_positions, calculate_tag_positions, TagFinalPosition};
+
+    #[test]
+    fn test1() {
+        let template = r#"#if 你大爷 #end""#;
+
+        let result =  calculate_tag_positions(template);
+        // println!("{:#?}", result);
+        let final_positions = calculate_tag_final_positions(result);
+
+        let tree = build_tag_tree(final_positions.unwrap());
+        println!("{:?}", tree);
+
+        let result = vec![
+            TagFinalPosition {
+                tag: "#if".to_string(),
+                start: 0,
+                end: 14,
+                child: Some(Vec::new()) // 指定空的 Vec
+            }
+        ];
+
+        assert_eq!(result, tree);
+    }
+}
