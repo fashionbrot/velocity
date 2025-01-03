@@ -1,3 +1,4 @@
+use std::time::Instant;
 use tokio::io::split;
 use velocity::tag::tag_parse;
 
@@ -251,23 +252,125 @@ fn main() {
     println!("{:?}", vec[0..3].to_vec()); // 转换为 Vec<&str>
 
     let template =
-r#"#if($lombokEnable)
-#if($lombokEnable)import lombok.*;#end#if($lombokEnable)import lombok.*;
+r#"hello rust
+#if($lombokEnable)
+#if($lombokEnable)1#end#if($lombokEnable)import lombok.*;
 #if (${swagger2Enable})
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 #end
 #end
+#if($lombokEnable)
+#if($lombokEnable)
+import lombok.*;
 #end
+#end
+#end
+#if #end
 "#;
+//     let template = r#"
+//     package ${packageOut}${requestOut};
+//
+// #if($lombokEnable)
+// import lombok.*;
+// #end
+// #if (${swagger2Enable})
+// import io.swagger.annotations.ApiModel;
+// import io.swagger.annotations.ApiModelProperty;
+// #end
+// #if(${swagger3Enable})
+// import io.swagger.v3.oas.annotations.media.Schema;
+// #end
+// import com.fasterxml.jackson.annotation.JsonFormat;
+// import org.springframework.format.annotation.DateTimeFormat;
+// import java.util.Date;
+//
+// /**
+//  * ${tableNameDescription}
+//  *
+// #if(${author})
+//  * @author ${author}
+// #end
+//  */
+//
+// #if (${swagger2Enable})
+// @ApiModel("${className}${requestSuffix}")
+// #end
+// #if(${swagger3Enable})
+// @Schema(title = "${className}${requestSuffix}")
+// #end
+// #if($lombokEnable)
+// @Data
+// @Builder
+// @NoArgsConstructor
+// @AllArgsConstructor
+// @EqualsAndHashCode(callSuper=false)
+// #end
+// public class ${className}${requestSuffix} extends Page${requestSuffix} {
+//
+//
+// #foreach($field in $tableFieldList)
+//
+//     #if (${swagger2Enable})
+//     @ApiModelProperty(value = "$field.comments")
+//     #elseif(${swagger3Enable})
+//     @Schema(description = "$field.comments")
+//     #else
+//     /**
+//      * $field.comments
+//      */
+//     #end
+//     #if($ObjectUtil.toLowerCase($field.attrType)=='date' &&  $ObjectUtil.toLowerCase($field.dataType)== 'datetime')
+//     @DateTimeFormat(pattern = "${dateTimeFormatValue}")
+//     @JsonFormat(timezone = "GMT+8", pattern = "${dateTimeFormatValue}")
+//     #end
+//     #if($ObjectUtil.toLowerCase($field.attrType)=='date' && $ObjectUtil.toLowerCase($field.dataType)== 'date')
+//     @DateTimeFormat(pattern = "${dateFormatValue}")
+//     @JsonFormat(timezone = "GMT+8", pattern = "${dateFormatValue}")
+//     #end
+//     #if($ObjectUtil.toLowerCase($field.attrType)=='date' && $ObjectUtil.toLowerCase($field.dataType)== 'time')
+//     @DateTimeFormat(pattern = "${timeFormatValue}")
+//     @JsonFormat(timezone = "GMT+8", pattern = "${timeFormatValue}")
+//     #end
+//     private $field.attrType $field.variableAttrName;
+// #end
+//
+// #if(!$lombokEnable)
+// #foreach($field in $tableFieldList)
+//
+//     public ${field.attrType} get${field.getSetName}() {
+//             return $field.variableAttrName;
+//             }
+//
+//     public void set${field.getSetName}(${field.attrType} $field.variableAttrName) {
+//             this.$field.variableAttrName = $field.variableAttrName;
+//             }
+//
+// #end
+// #end
+//
+// }
+//
+//     "#;
+    // 获取开始时间
+    let start = Instant::now();
 
    let result =  tag_parse::calculate_tag_positions(template);
-    println!("{:#?}", result);
+    // println!("{:#?}", result);
     let final_positions = tag_parse::calculate_tag_final_positions(result);
-    println!("{}",  serde_json::to_string(&final_positions).unwrap());
+    // println!("{}",  serde_json::to_string(&final_positions).unwrap());
 
-    let rr = tag_parse::test(template, final_positions);
-    println!("{:#?}", rr);
+    let tree =  tag_parse::build_tag_tree(final_positions.unwrap());
+    // println!("---------------{:#?}", tree);
+    println!("{}",  serde_json::to_string(&tree).unwrap());
+
+    // 获取结束时间
+    let duration = start.elapsed();
+
+    // 打印执行时间
+    println!("Time elapsed is: {:?}", duration);
+    // let rr = tag_parse::test(template, final_positions);
+    // println!("{:#?}", rr);
 
 }
 
