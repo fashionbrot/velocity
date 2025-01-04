@@ -1,8 +1,10 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::ops::Add;
+use crate::node::node_parse::ExpressionNode;
 
 pub mod tag;
+pub mod node;
 
 // 编译正则表达式
 lazy_static::lazy_static! {
@@ -16,21 +18,6 @@ pub struct VelocityEngine {
     tag_handlers: Vec<&'static str>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExpressionNode {
-    TextNode {
-        text: String,
-    },
-    IfNode {
-        condition: String,
-        children: Vec<ExpressionNode>,
-    },
-    ForeachNode {
-        collection: String,
-        element: String,
-        children: Vec<ExpressionNode>,
-    },
-}
 
 impl ExpressionNode {
     fn new(template: String, engine: VelocityEngine) -> Option<Vec<ExpressionNode>> {
@@ -208,7 +195,8 @@ impl VelocityEngine {
 }
 #[cfg(test)]
 mod tests {
-    use crate::{ExpressionNode, VelocityEngine};
+    use crate::{VelocityEngine};
+    use crate::node::node_parse::ExpressionNode;
 
     #[test]
     fn test1() {

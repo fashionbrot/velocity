@@ -1,8 +1,11 @@
 use std::alloc::System;
 use regex::{Regex, escape};
 use std::collections::HashSet;
+use std::str::Chars;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
+use crate::node::{foreach_node, if_node, text_node};
+use crate::node::node_parse::ExpressionNode;
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct TagPosition {
@@ -154,7 +157,7 @@ pub fn calculate_tag_positions(template: &str) -> Vec<TagPosition> {
 
     // 查找所有匹配的标签
     for (index, capture) in TAGS_PATTERN.find_iter(template).enumerate() {
-        // println!("{} - {} index:{}", index, capture.as_str(),capture.start());
+        println!("{} - {} index:{}", index, capture.as_str(),capture.start());
         tag_positions.push(TagPosition {
             tag: capture.as_str().to_string(),
             index: capture.start(), // 获取标签的字符下标
@@ -199,83 +202,155 @@ pub fn calculate_tag_final_positions(tag_positions: Vec<TagPosition>) -> Result<
     Ok(final_positions)
 }
 
-pub fn test(template:&str,tag_final_position: Result<Vec<TagFinalPosition>, String>) -> Result<Vec<TagPosition>, String> {
-    if let Err(error) = tag_final_position {
-        return Err(error);
+
+pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-> Option<Vec<ExpressionNode>>{
+    // println!("template:{}", template);
+    // println!("tags: {:?}", tags);
+    let mut node_list = vec![];
+    if template.is_empty()  {
+        return None;
     }
 
-    let mut tag_final_position = tag_final_position?;
-    tag_final_position.sort_by(|a, b| a.start.cmp(&b.start));
-    println!("{:#?}", tag_final_position);
-    let mut start_index = 0;
-    let mut tag_index = 0;
-    let chars: Vec<char> = template.chars().collect();
-    println!("{}", chars.len());
+    let mut current_start = start;
+    let first = start==0;
+    let mut template_end = template.len();
 
-    let mut temp = vec![];
+    for i in 0..tags.len() {
+        let tag = &tags[i];
+        let tag_start = tag.start;
+        let tag_end = tag.end;
+        let tag_child = &tag.child;
+        let tag_len = tag.tag.len();
+        println!(" tag: {} tag_len:{}",tag.tag,tag_len);
+        // if current_start>0 {
+        //     current_start = current_start+(tag_len+1);
+        // }
 
-    while start_index < chars.len() {
-        let tag_final_position = &tag_final_position[tag_index];
-        if temp.contains(&tag_final_position.start) {
-
-        }
-        temp.push(tag_final_position.start);
-        let first_text:String = chars[start_index..tag_final_position.start].iter().collect();
-        let tag_text:String = chars[tag_final_position.start + 1..tag_final_position.end].iter().collect();
-        println!("first_text:{}",first_text);
-        println!("tag_text:{}",tag_text);
-        tag_index= tag_index + 1;
-        start_index= tag_final_position.end+1;
-        println!("start_index:{}",start_index);
-    }
-
-
-    Ok(Vec::new())
-}
-
-pub fn test2(template:&str,tag_final_position: Result<Vec<TagFinalPosition>, String>) -> Result<Vec<TagPosition>, String> {
-    if let Err(error) = tag_final_position {
-        return Err(error);
-    }
-    let mut tag_final_position = tag_final_position?;
-    tag_final_position.sort_by(|a, b| a.start.cmp(&b.start));
-    println!("{:#?}", tag_final_position);
-    let mut start_index = 0;
-    let mut tag_index = 0;
-    let chars: Vec<char> = template.chars().collect();
-    println!("{}", chars.len());
-
-    let mut temp = vec![];
-
-    for i in 0..tag_final_position.len() {
-        let tag_position = &tag_final_position[i];
-        let start = tag_position.start;
-        let end = tag_position.end;
-        println!("start:{} end:{}",start,end);
-        if temp.contains(&start) {
-            continue;
+        println!("start {} -end  {} ", current_start,tag_start);
+        if current_start+1!=tag_start {
+            let text =    &template[current_start..tag_start];
+            node_list.push(text_node::new_node(text));
+            println!("first-tag_first {:?}", text);
         }
 
-        // let first_text:String = chars[start_index..tag_position.start].iter().collect();
-        let tag_text:String = chars[tag_position.start ..tag_position.end+4].iter().collect();
-        println!("");
-        // println!("first_text:{}",first_text);
-        println!("tag_text:{}",tag_text);
-        println!("");
-        temp.push(start);
+
+
+
+        let tag_text = &template[tag_start..=tag_end+3];
+        println!("tag_text:{:?}", tag_text);
+
+
+        let mut child_node_list:Option<Vec<ExpressionNode>> = None;
+        if let Some(child) = tag_child {
+            if let Some(pos) = tag_text.find(')') {
+                let child_start = tag_start+pos+1;
+                let child_end = tag_end ;
+                println!("tag_start:{} tag_end:{}",tag_start,tag_end);
+                println!("child_start:{:?} child_end:{}", child_start,child_end);
+                println!("total:{}", template.len());
+                let child_text = &template[child_start..child_end];
+                println!("child_text:{:?}", child_text);
+
+                if child.is_empty() {
+                    child_node_list = Some(vec![text_node::new_node(child_text)]);
+                }else{
+                    child_node_list = parse_template(tag_start+pos+1,template, child);
+                }
+            } else {
+                //todo 抛出错误
+            }
+        }
+
+
+
+        if tag.tag == "#if" {
+            let condition = get_if_condition(tag_text);
+            if let Some(condition) = condition {
+                node_list.push(ExpressionNode::IfNode {condition: condition.parse().unwrap(), children: child_node_list });
+
+            }else {
+                //todo 提示解析异常
+            }
+        }else if tag.tag == "#foreach" {
+            let condition = get_if_condition(tag_text);
+            if let Some(condition) = condition {
+                if let Some((left, right)) = get_foreach_condition(condition) {
+                    node_list.push(ExpressionNode::ForeachNode {
+                        collection: left,
+                        element: right,
+                        children: child_node_list,
+                    });
+                } else {
+                    return None;
+                }
+            }else {
+                //todo 提示解析异常
+            }
+        }
+
+
+        current_start = tag_end+4;
+        println!("{}", current_start);
+
+        if first && i == tags.len()-1 {
+            if current_start>0 {
+                current_start = current_start+(tag_len+1);
+            }
+            println!("start {} -end  {} ", tag_end,template_end);
+            let text = &template[tag_end+4..template_end];
+            println!("tag_end - template_last:{:?}", text);
+
+            node_list.push(text_node::new_node(text));
+        }
+
+
+        //todo 打开
+        // let tag_node = ExpressionNode::new_node(tag, child_node_list);
+        // if let Some(node) = tag_node {
+        //     node_list.push(node);
+        // }
     }
 
-
-    Ok(Vec::new())
+    Some(node_list)
 }
 
-// pub fn get_child(template:&str,tag_final_position:Vec<TagFinalPosition>) -> Result<String, String> {
-//
-// }
+
+pub fn get_root_text(template:&str,start:usize,end:usize) -> &str{
+    println!("Tag start: {}, end: {}", start, end);
+    &template[start..end]
+}
+
+
+fn get_if_condition(input: &str) -> Option<&str> {
+    // 查找 'if' 后面的 '(' 和第一个 ')'
+    if let Some(start) = input.find('(') {
+        if let Some(end) = input[start..].find(')') {
+            // 返回括号内的内容
+            return Some(&input[start + 1..start + end]);
+        }
+    }
+    None
+}
+
+fn get_foreach_condition(input: &str) -> Option<(String, String)> {
+    // 去掉字符串两端的空白字符
+    let trimmed_input = input.trim();
+    // 查找 'in' 的位置
+    if let Some(in_index) = trimmed_input.find("in") {
+        // 提取 'in' 之前和之后的内容
+        let left = trimmed_input[..in_index].trim().to_string();
+        let right = trimmed_input[in_index + 2..].trim().to_string();
+
+        return Some((left, right));
+    }
+
+    None
+}
+
 
 #[cfg(test)]
 mod tests {
-    use crate::tag::tag_parse::{build_tag_tree, calculate_tag_final_positions, calculate_tag_positions, TagFinalPosition};
+    use crate::tag::tag_parse::{build_tag_tree, calculate_tag_final_positions, calculate_tag_positions, parse_template, TagFinalPosition};
 
     #[test]
     fn test1() {
@@ -299,4 +374,50 @@ mod tests {
 
         assert_eq!(result, tree);
     }
+
+
+    #[test]
+    fn parse_template_test(){
+        let template =
+r#"第一行
+#if($lombokEnable)
+import lombok.*;
+#end
+第三行
+#if($lombokEnable)
+    #foreach($field in $tableFieldList)
+
+    private $field.attrType $field.variableAttrName;#end
+#end
+
+第八行
+"#;
+//         let template =
+//             r#"第一行
+// #if($lombokEnable)
+// 第二行
+// 第三行
+// #end"#;
+        let template =r#"
+    #if($lombokEnable)import lombok.*;#end
+#if($lombokEnable)
+import lombok.*;
+#end
+#if($lombokEnable)
+#foreach($field in $tableFieldList)
+    第二行
+#end
+#end
+"#;
+
+
+        let result =  calculate_tag_positions(template);
+        let final_positions = calculate_tag_final_positions(result);
+        let tree = build_tag_tree(final_positions.unwrap());
+        println!("{:#?}", tree);
+
+        let node_list = parse_template(0,template, &tree);
+        println!("{:#?}", node_list);
+    }
+
 }
