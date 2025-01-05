@@ -1,10 +1,7 @@
-use regex::Regex;
-use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use velocity;
 use velocity::{read_file, VelocityEngine};
 use velocity::tag::tag_parse;
-use velocity::tag::tag_parse::{TagPosition, TAGS_PATTERN};
 use crate::User;
 
 #[test]
