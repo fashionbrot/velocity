@@ -1,0 +1,11 @@
+第${one}行 hello ${rust}
+#if($age > 18)
+18岁了，第2行
+#end
+第3行
+#foreach($item in $userList)
+    #if($item == "张三")
+        <p>username: $item</p>
+    #end
+#end
+最后一行

@@ -1,4 +1,6 @@
-use crate::node::{foreach_node, if_node};
+use std::collections::HashMap;
+use serde_json::Value;
+use crate::node::{foreach_node, if_node, text_node};
 use crate::tag::tag_parse::TagFinalPosition;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,6 +41,20 @@ impl ExpressionNode {
             return foreach_node::new_node(&tag,child_node_list);
         }
         None
+    }
+
+    pub fn get_node_text(node:ExpressionNode,content: &HashMap<String, Value>) -> Option<String>{
+        match node {
+            ExpressionNode::TextNode { .. } => {
+                text_node::node_to_string(&node, content)
+            }
+            ExpressionNode::IfNode { .. } => {
+                if_node::node_to_string(&node, content)
+            }
+            ExpressionNode::ForeachNode { .. } => {
+                foreach_node::node_to_string(&node, content)
+            }
+        }
     }
 
 }

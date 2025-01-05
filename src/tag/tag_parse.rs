@@ -40,7 +40,10 @@ impl TagFinalPosition {
     }
 }
 
-pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Vec<TagFinalPosition> {
+pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPosition>> {
+    if tags.is_empty() {
+        return None;
+    }
     // 按 start 排序（降序），避免不必要的重复排序
     tags.sort_by_key(|tag| std::cmp::Reverse(tag.start));
     // println!("---------{:?}", tags);
@@ -79,7 +82,7 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Vec<TagFinalPosition> 
 
     // 按 start 排序升序
     result.sort_by_key(|tag| tag.start);
-    result
+    Some(result)
 }
 
 // pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Vec<TagFinalPosition> {
@@ -363,14 +366,14 @@ mod tests {
         let tree = build_tag_tree(final_positions.unwrap());
         println!("{:?}", tree);
 
-        let result = vec![
+        let result =Option::Some(vec![
             TagFinalPosition {
                 tag: "#if".to_string(),
                 start: 0,
                 end: 14,
                 child: Some(Vec::new()) // 指定空的 Vec
             }
-        ];
+        ]);
 
         assert_eq!(result, tree);
     }
@@ -416,7 +419,7 @@ import lombok.*;
         let tree = build_tag_tree(final_positions.unwrap());
         println!("{:#?}", tree);
 
-        let node_list = parse_template(0,template, &tree);
+        let node_list = parse_template(0,template, &tree.unwrap());
         println!("{:#?}", node_list);
     }
 

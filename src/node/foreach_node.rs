@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use serde_json::Value;
 use crate::node::node_parse::ExpressionNode;
 use crate::tag::tag_parse::TagFinalPosition;
 
@@ -7,5 +9,10 @@ pub fn new_node(tag:&TagFinalPosition,child_node_list:Option<Vec<ExpressionNode>
     if tag == "#foreach" {
 
     }
+    None
+}
+
+pub fn node_to_string(node: &ExpressionNode,context:&HashMap<String, Value>) -> Option<String> {
+
     None
 }

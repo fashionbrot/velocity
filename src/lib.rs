@@ -1,10 +1,14 @@
 use regex::Regex;
 use std::collections::HashMap;
 use std::ops::Add;
+use serde_json::Value;
 use crate::node::node_parse::ExpressionNode;
+use crate::tag::tag_parse;
 
 pub mod tag;
 pub mod node;
+
+pub mod expression;
 
 // 编译正则表达式
 lazy_static::lazy_static! {
@@ -13,77 +17,9 @@ lazy_static::lazy_static! {
 
 #[derive(Debug)]
 pub struct VelocityEngine {
-    context: HashMap<String, String>,
+    context: HashMap<String, Value>,
     // 存储变量的上下文
     tag_handlers: Vec<&'static str>,
-}
-
-
-impl ExpressionNode {
-    fn new(template: String, engine: VelocityEngine) -> Option<Vec<ExpressionNode>> {
-        let mut node_list = vec![];
-        let mut lines = template.lines().collect::<Vec<&str>>(); // 按行分割模板
-
-        let mut read_line = 0;
-        while read_line < lines.len() {
-            let mut line = lines[read_line].to_string(); // 获取当前行
-
-            // 匹配标签
-            let (condition, tag) = engine.match_tag(&line);
-            println!("condition: {} tag:{:?}", condition,tag);
-            if condition {
-
-                let tag_index = line.find(tag.unwrap()).unwrap();
-                while read_line < lines.len() {
-                    if let Some(end_index) = line.find("#end") {
-                        println!("line:{} tag_index:{} end_index:{}",line,tag_index,end_index);
-                        let all_text = lines[tag_index..=end_index].join("\n"); // 获取标签前的文本
-                        println!("{}", all_text);
-                        break;
-                    }else {
-                        line.push_str("\n");
-                        line.push_str(&lines[read_line + 1]);
-                        // 继续处理下一行
-                        read_line += 1;
-                    }
-                }
-
-                // if let Some(index) = line.find("#end") {
-                //     // 如果找到 #END 标签
-                //     let first_text = lines[0..tag_index].join("\n"); // 获取标签前的文本
-                //     println!("{} {}", tag_index,first_text);
-                //     let tag_text = lines[tag_index..index].join("\n"); // 获取标签文本
-                //     let last_text = lines[index + 1..].join("\n"); // 获取标签后的文本
-                //
-                //     println!("--- {} {} {}", first_text, tag_text, last_text);
-                //
-                //     // 在此根据需求决定如何处理
-                // } else {
-                //     // 如果没有 #END 标签，合并下一行
-                //     if read_line + 1 < lines.len() {
-                //         line.push_str(&lines[read_line + 1]);
-                //         // 继续处理下一行
-                //         read_line += 1;
-                //     }
-                // }
-
-
-            } else {
-                // 如果没有标签，直接将文本加入节点列表
-                node_list.push(ExpressionNode::TextNode { text: line, });
-            }
-
-            // 继续处理下一行
-            read_line += 1;
-        }
-
-        println!("{:?}", node_list); // 调试输出节点列表
-        Some(node_list)
-    }
-
-    fn parse(node_list: Vec<ExpressionNode>) -> Option<String> {
-        None
-    }
 }
 
 impl VelocityEngine {
@@ -91,78 +27,49 @@ impl VelocityEngine {
     pub fn new() -> Self {
         VelocityEngine {
             context: HashMap::new(),
-            tag_handlers: vec!["#if", "#else", "#elseif", "#foreach"],
+            tag_handlers: vec!["#if", "#foreach"],
         }
     }
 
     // 设置变量，支持任意类型
-    pub fn insert<T: ToString>(&mut self, key: &str, value: T) {
-        self.context.insert(key.to_string(), value.to_string());
+    pub fn insert(&mut self, key: &str, value: Value) {
+        self.context.insert(key.to_string(), value);
     }
 
     // 渲染模板
     pub fn render(&self, template: &str) -> String {
-        let mut output = template.to_string();
-        let mut loop_depth = 0;
-
-        // 递归处理 #if, #elseif, #else, #foreach 标签
-        output = self.parse_template(&output, &mut loop_depth);
-
-        output
+        self.parse_template(template)
     }
 
     // 递归解析模板中的标签
-    fn parse_template(&self, template: &str, loop_depth: &mut usize) -> String {
+    fn parse_template(&self, template: &str) -> String {
         let mut output = String::new();
-        let mut i = 0;
 
-        let mut lines = template.lines().collect::<Vec<&str>>(); // 按行分割模板
-        for line in &lines {
-            println!("{:?}", line)
+        let result =  tag_parse::calculate_tag_positions(template);
+        let final_positions = tag_parse::calculate_tag_final_positions(result);
+        let tree = tag_parse::build_tag_tree(final_positions.unwrap());
+
+        let mut node_list = None;
+        if let Some(tree) = tree {
+            node_list = tag_parse::parse_template(0,template, &tree);
         }
-        let mut loop_depth = 0;
-        for line in &lines {
-            let (match_flag, tag) = self.match_tag(line);
+        println!("node_list:{:#?}", node_list);
+        if let Some(node_list) = node_list {
+            for node in node_list {
+                let content = &self.context;
 
-            println!("match_flag: {} tag:{:?}", match_flag,tag);
-            // 如果匹配到标签
-            if match_flag {
-                if let Some(tag_str) = tag {
-                    // 使用正则表达式查找标签
-                    let re = Regex::new(&tag_str).unwrap();
-                    if let Some(matched) = re.find(line) {
-                        println!("{:?}", matched.start());
-                        println!("{:?}", &line[0..2]);
-                        // 获取标签之前的内容
-                        let first_str = &line[0..matched.start()];
-                        println!("str:{:?}", first_str);
-                        output.push_str(first_str); // 直接拼接字符串
-                    }
+                let result = ExpressionNode::get_node_text(node, content);
+                if let Some(node_text) = result {
+                    output.push_str(&node_text);
                 }
-                output.push_str("\n");
-            } else {
-                // 如果没有匹配到标签，直接把整行添加到输出中
-                output.push_str(line);
-                output.push_str("\n");
             }
         }
+
 
         output
     }
 
-    // 提取标签内容
-    fn extract_tag(&self, template: &str, tag_pos: usize) -> String {
-        let mut tag = String::new();
-        let mut i = tag_pos;
-        while i < template.len()
-            && !template[i..].starts_with(" ")
-            && template[i..].starts_with("#")
-        {
-            tag.push(template[i..].chars().next().unwrap());
-            i += 1;
-        }
-        tag
-    }
+
 
     fn match_tag(&self, line: &str) -> (bool, Option<&str>) {
         for tag in self.tag_handlers.iter() {
@@ -193,68 +100,51 @@ impl VelocityEngine {
         .to_string()
     }
 }
+
+
+pub fn read_file(file_path: &str) -> Result<String, std::io::Error> {
+    std::fs::read_to_string(file_path)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::{VelocityEngine};
-    use crate::node::node_parse::ExpressionNode;
 
     #[test]
     fn test1() {
         let mut engine = VelocityEngine::new();
-        engine.insert("name", "Rust");
+        // engine.insert("name", "Rust");
         let input = "Hello ${name}, how are ${ name} today? ${name } is great!";
         let result = engine.normalize_variable_syntax(input);
         println!("{}", result);
         assert!(result == "Hello Rust, how are Rust today? Rust is great!".to_string())
     }
 
-    #[test]
-    fn main() {
-        let mut engine = VelocityEngine::new();
-        engine.insert("name", "John");
-        engine.insert("age", 18); // 插入数字
-        engine.insert("is_active", true); // 插入布尔值
+    // #[test]
+    // fn main() {
+    //     let mut engine = VelocityEngine::new();
+    //     engine.insert("name", "John");
+    //     engine.insert("age", 18); // 插入数字
+    //     engine.insert("is_active", true); // 插入布尔值
+    //
+    //     let template = r#"
+    //     第二行
+    //     #if($age > 18)
+    //         18岁了，第三行
+    //     #end
+    //     第四行
+    //     #foreach($item in $list)
+    //         #if($item == "Item2")
+    //             <p>Special Item: $item</p>
+    //         #else
+    //             <p>Regular Item: $item</p>
+    //         #end
+    //     #end
+    //     "#;
+    //
+    //     let output = engine.render(template);
+    //     println!("output:{:?}", output);
+    // }
 
-        let template = r#"张三#if($age > 18)18岁了#end
-#if($age > 18)
-    18岁了
-#end
-#foreach($item in $list)
-    #if($item == "Item2")
-        <p>Special Item: $item</p>
-    #else
-        <p>Regular Item: $item</p>
-    #end
-#end
-"#;
 
-        let rendered = engine.render(template);
-        println!("{}", rendered);
-    }
-
-    #[test]
-    fn test2() {
-        let mut engine = VelocityEngine::new();
-        engine.insert("name", "John");
-        engine.insert("age", 18); // 插入数字
-        engine.insert("is_active", true); // 插入布尔值
-
-        let template = r#"
-#if($mybatisPlusEnable)
-import com.baomidou.mybatisplus.annotation.*;
-#end
-import com.fasterxml.jackson.annotation.JsonFormat;
-import org.springframework.format.annotation.DateTimeFormat;
-#if($serialVersionUIDEnable)
-import java.io.Serializable;
-#end
-#if($lombokEnable)
-import lombok.*;
-#end"#;
-
-        let node_list = ExpressionNode::new(template.parse().unwrap(), engine);
-        if let Some(list) = node_list {
-            println!("{:?}", list)
-        }
-    }
 }
