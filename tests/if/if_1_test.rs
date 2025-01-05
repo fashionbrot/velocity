@@ -56,8 +56,8 @@ pub fn test(){
 
     let output = engine.render(template.as_str());
 
-    print!("{:?}",output);
-    assert_eq!(output,"    import com.baomidou.mybatisplus.annotation.*;")
+    println!("output:{:?}",output);
+    assert_eq!(output,"    import com.baomidou.mybatisplus.annotation.*;\n")
 }
 
 #[test]

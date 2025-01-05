@@ -239,7 +239,9 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
         println!("start {} -end  {} ", current_start,tag_start);
         if current_start<tag_start {
             let text =    &template[current_start..tag_start];
-            node_list.push(text_node::new_node(text));
+            if let Some(text_node) =text_node::new_node(text) {
+                node_list.push(text_node);
+            }
             println!("first-tag_first {:?}", text);
         }
 
@@ -262,7 +264,10 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                 println!("child_text:{:?}", child_text);
 
                 if child.is_empty() {
-                    child_node_list = Some(vec![text_node::new_node(child_text)]);
+                    if let Some(text_node) =text_node::new_node(child_text) {
+                        child_node_list = Some(vec![text_node]);
+                    }
+
                 }else{
                     child_node_list = parse_template(tag_start+pos+1,template, child);
                 }
@@ -310,7 +315,10 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
             let text = &template[tag_end+4..template_end];
             println!("tag_end - template_last:{:?}", text);
 
-            node_list.push(text_node::new_node(text));
+            if let Some(text_node) =text_node::new_node(text) {
+                node_list.push(text_node);
+            }
+            // node_list.push(text_node::new_node(text));
         }
 
 

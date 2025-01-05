@@ -12,30 +12,27 @@ pub fn new_node_trim(text: &str) -> ExpressionNode {
 }
 
 
-pub fn new_node(text: &str) -> ExpressionNode {
-    println!("new_node text:------------{:?}----------------",text);
+pub fn new_node(text: &str) -> Option<ExpressionNode> {
+    // println!("new_node text:------------{:?}----------------",text);
     if text.len()>1 {
         if text.len()==2 && text.starts_with("\r\n") {
-            return ExpressionNode::TextNode {
+            return Some(ExpressionNode::TextNode {
                 text:  "".to_string(),
-            };
+            });
         }
 
         if is_wrapped_with_crlf(text) {
-            println!("is_wrapped_with_crlf text:--------{:?}-----------",text);
-            return ExpressionNode::TextNode {
+            // println!("is_wrapped_with_crlf text:--------{:?}-----------",text);
+            return Some(ExpressionNode::TextNode {
                 text:  format!("{}\n",remove_surrounding_crlf(text)),
-            };
+            });
         }else{
-            return ExpressionNode::TextNode {
+            return Some(ExpressionNode::TextNode {
                 text:  text.to_string(),
-            };
+            });
         }
     }
-
-    ExpressionNode::TextNode {
-        text: text.to_string(),
-    }
+    None
 }
 
 
@@ -46,47 +43,38 @@ fn is_wrapped_with_crlf(input: &str) -> bool {
     if input.matches("\r\n").count()==1 {
         return false;
     }
-    
-    println!("is_wrapped_with_crlf trimmed:{:?}",trimmed);
+    // println!("is_wrapped_with_crlf trimmed:{:?}",trimmed);
     trimmed.starts_with("\r\n") && trimmed.ends_with("\r\n")
 }
 fn remove_surrounding_crlf(input: &str) -> String {
 
     if input.starts_with("\r\n") && input.ends_with("\r\n") {
-        let string = input[2..input.len() - 2].to_string();
-        println!("remove_surrounding_crlf 1111111111111:{:?}",string);
-        return string;
-    }else {
-        let start_ = input.find("\r\n");
-        let end_ = input.rfind("\r\n");
-        if start_.is_none() || end_.is_none() {
-            return input.to_string();
-        }
+        return  input[2..input.len() - 2].to_string();
+    }
 
-        let start = start_.unwrap();
-        let end = end_.unwrap();
+    let start_ = input.find("\r\n");
+    let end_ = input.rfind("\r\n");
+    if start_.is_none() || end_.is_none() {
+        return input.to_string();
+    }
+    let start = start_.unwrap();
+    let end = end_.unwrap();
 
-        if input.starts_with("\r\n") {
-            let m_text = &input[2..end];
-            let end_text = &input[end+2..];
-            return format!("{}{}", m_text, end_text)
-        }else if input.ends_with("\r\n") {
-
-            let start_text = &input[0..start];
-            let m_text = &input[(start+2)..end];
-
-            return format!("{}{}", start_text, m_text)
-        }
-
-
-
+    if input.starts_with("\r\n") {
+        let m_text = &input[2..end];
+        let end_text = &input[end+2..];
+        return format!("{}{}", m_text, end_text)
+    }else if input.ends_with("\r\n") {
         let start_text = &input[0..start];
         let m_text = &input[(start+2)..end];
-        let end_text = &input[end+2..];
-
-        format!("{}{}{}", start_text, m_text, end_text)
-
+        return format!("{}{}", start_text, m_text)
     }
+
+    let start_text = &input[0..start];
+    let m_text = &input[(start+2)..end];
+    let end_text = &input[end+2..];
+
+    format!("{}{}{}", start_text, m_text, end_text)
 }
 
 fn remove_single_leading_newline(input: &str) -> &str {
