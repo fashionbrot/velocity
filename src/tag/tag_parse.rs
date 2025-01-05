@@ -46,7 +46,7 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
     }
     // 按 start 排序（降序），避免不必要的重复排序
     tags.sort_by_key(|tag| std::cmp::Reverse(tag.start));
-    // println!("---------{:?}", tags);
+    println!("tag---------\n{:#?}", tags);
 
     let mut result = Vec::new();
     // let mut processed = vec![false; tags.len()]; // 标记哪些标签已经被处理过
@@ -63,6 +63,13 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
 
         // 获取当前标签的子标签
         let children = get_child(&list, &current_tag);
+        if !children.is_empty() {
+            children.iter().for_each(|child| {
+                if let Some(index) = list.iter().position(|x| x.start == child.start && x.end == child.end) {
+                    list.swap_remove(index);
+                }
+            })
+        }
         current_tag.child = Some(children);
 
         // 将当前标签加入 list
@@ -230,7 +237,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
         // }
 
         println!("start {} -end  {} ", current_start,tag_start);
-        if current_start+1!=tag_start {
+        if current_start<tag_start {
             let text =    &template[current_start..tag_start];
             node_list.push(text_node::new_node(text));
             println!("first-tag_first {:?}", text);

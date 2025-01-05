@@ -11,18 +11,25 @@ enum Token {
 }
 
 pub fn evaluate_expression(expression: &str) -> Result<bool, String> {
-    let tokens = tokenize(expression)?;
-    println!("tokens: {:#?}", tokens);
-    let postfix = infix_to_postfix(tokens)?;
-    println!("postfix: {:#?}", postfix);
-    evaluate_postfix(postfix)
-}
+    println!("Evaluating expression: {}", expression);
+    let tokens = tokenize(expression);
+    if tokens.is_err() {
+        return Err(tokens.unwrap_err());
+    }
 
+    println!("tokens: {:#?}", tokens);
+    let postfix = infix_to_postfix(tokens.unwrap());
+    if postfix.is_err() {
+        return Err(postfix.unwrap_err());
+    }
+    println!("postfix: {:#?}", postfix);
+    evaluate_postfix(postfix.unwrap())
+}
 fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
 
     // 修改正则表达式，增加对 true 和 false 的支持
-    let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)").unwrap();
+    let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}").unwrap();
 
     for cap in re.captures_iter(expression) {
         if let Some(num) = cap.get(1) {
@@ -42,11 +49,44 @@ fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
                 _ => return Err(format!("Unexpected boolean value: {}", bool_str.as_str())),
             };
             tokens.push(boolean);
+        } else if let Some(var) = cap.get(6) {
+            // 处理 `${}` 中的变量
+            tokens.push(Token::Boolean(false));
         }
     }
 
     Ok(tokens)
 }
+
+// fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
+//     let mut tokens = Vec::new();
+//
+//     // 修改正则表达式，增加对 true 和 false 的支持
+//     let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)").unwrap();
+//
+//     for cap in re.captures_iter(expression) {
+//         if let Some(num) = cap.get(1) {
+//             // 处理数字
+//             tokens.push(Token::Number(num.as_str().parse().unwrap()));
+//         } else if let Some(op) = cap.get(3) {
+//             // 处理操作符
+//             tokens.push(Token::Operator(op.as_str().to_string()));
+//         } else if let Some(paren) = cap.get(4) {
+//             // 处理括号
+//             tokens.push(Token::Parenthesis(paren.as_str().chars().next().unwrap()));
+//         } else if let Some(bool_str) = cap.get(5) {
+//             // 处理布尔值 true 和 false
+//             let boolean = match bool_str.as_str() {
+//                 "true" => Token::Boolean(true),
+//                 "false" => Token::Boolean(false),
+//                 _ => return Err(format!("Unexpected boolean value: {}", bool_str.as_str())),
+//             };
+//             tokens.push(boolean);
+//         }
+//     }
+//
+//     Ok(tokens)
+// }
 
 // fn tokenize(input: &str) -> Result<Vec<Token>, String> {
 //     let mut tokens = Vec::new();

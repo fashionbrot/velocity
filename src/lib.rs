@@ -46,8 +46,11 @@ impl VelocityEngine {
         let mut output = String::new();
 
         let result =  tag_parse::calculate_tag_positions(template);
+        // println!("tag_position_list:{:#?}",result);
         let final_positions = tag_parse::calculate_tag_final_positions(result);
+        // println!("final_positions:{:#?}",final_positions);
         let tree = tag_parse::build_tag_tree(final_positions.unwrap());
+        // println!("tree:{:#?}",tree);
 
         let mut node_list = None;
         if let Some(tree) = tree {

@@ -1,6 +1,18 @@
 第${one}行 hello ${rust}
 #if($age > 18)
-18岁了，第2行
+18岁了，11
+#end
+#if($age > 18)
+18岁了，22
+#end
+#if($age > 18)
+18岁了，33
+#if($age > 18)
+    18岁了，44
+    #if($age > 18)
+    18岁了，55
+    #end
+#end
 #end
 第3行
 #foreach($item in $userList)
@@ -9,3 +21,26 @@
     #end
 #end
 最后一行
+
+
+package ${packageOut}${entityOut};
+
+#if($mybatisPlusEnable)
+import com.baomidou.mybatisplus.annotation.*;
+#end
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
+#if($serialVersionUIDEnable)
+import java.io.Serializable;
+#end
+#if($lombokEnable)
+import lombok.*;
+#end
+
+#if (${swagger2Enable})
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+#end
+#if($swagger3Enable)
+import io.swagger.v3.oas.annotations.media.Schema;
+#end

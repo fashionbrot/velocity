@@ -15,11 +15,11 @@ pub fn node_to_string(node: &ExpressionNode,context:&HashMap<String, Value>) -> 
 
     if let ExpressionNode::IfNode { condition,children } = node {
         let expression = text_node::normalize_variable_syntax(condition,context);
-
+        println!("if expression:{:?}",expression);
         if let Ok(expression) = expression_evaluator::evaluate_expression(&expression) {
             if expression {
 
-
+                println!("if expression:{:?}",expression);
                 if let Some(child) = children{
 
                     let mut output = String::new();
