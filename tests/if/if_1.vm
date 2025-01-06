@@ -1,3 +1,7 @@
 #if($age>18)
-    import com.baomidou.mybatisplus.annotation.*;
+    >18
+#elseif($age==18)
+    等于18
+#else
+    else 18
 #end

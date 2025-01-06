@@ -31,6 +31,7 @@ impl ExpressionNode {
             start: 0,
             end: 0,
             child: None,
+            else_node: None,
         }, None)
     }
 

@@ -1,7 +1,5 @@
-use std::alloc::System;
 use regex::{Regex, escape};
 use std::collections::HashSet;
-use std::str::Chars;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use crate::node::{foreach_node, if_node, text_node};
@@ -18,7 +16,8 @@ pub struct TagFinalPosition {
     pub tag: String,
     pub start: usize,
     pub end: usize,
-    pub child:Option<Vec<TagFinalPosition>>
+    pub child:Option<Vec<TagFinalPosition>>,
+    pub else_node:Option<Vec<TagFinalPosition>>
 }
 
 
@@ -87,9 +86,76 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
         // processed[i] = true; // 标记该标签已经处理
     }
 
+    println!("-------------\n{:#?}", result);
+
+    if !result.is_empty() {
+        for mut tag in result.clone() {
+            let tag_star = tag.start;
+            let tag_end = tag.end;
+
+            let mut else_node_list = vec![];
+            let mut current_start = tag.start;
+            while let Some(else_node) = get_else_node(result.clone(), current_start) {
+                else_node_list.push(else_node.clone());
+                current_start =else_node.start;
+            }
+
+            tag.else_node = Some(else_node_list);
+        }
+        result.sort_by_key(|tag| tag.start);
+        return Some(result);
+        // for i in 0..result.len() {
+        //     let  tag =  &result[i];
+        //     let tag_star = tag.start;
+        //     let tag_end = tag.end;
+        //
+        //     let mut else_node_list = vec![];
+        //     let mut current_start = tag.start;
+        //     while let Some(else_node) = &get_else_node(result, current_start) {
+        //         else_node_list.push(else_node.clone());
+        //         current_start =else_node.start;
+        //     }
+        //
+        //     tag.else_node = Some(else_node_list);
+        //     // let else_nodes  = result.iter().filter(|list_tag| list_tag.end == tag_star).collect();
+        //     // if !else_nodes.is_empty() {
+        //     //     if let Some(else_node) = else_nodes.first() {
+        //     //
+        //     //         if let Some(index) = list.iter().position(|x| x.start == else_node.start && x.end == else_node.end) {
+        //     //             list.swap_remove(index);
+        //     //         }
+        //     //     }
+        //     // }
+        // }
+    }
+
     // 按 start 排序升序
     result.sort_by_key(|tag| tag.start);
     Some(result)
+}
+
+// pub fn get_else_node(tags: &[TagFinalPosition], current_tag: &TagFinalPosition) -> Option<TagFinalPosition> {
+//     let else_nodes: Vec<TagFinalPosition>  = tags.iter().filter(|list_tag| list_tag.end == current_tag.start).cloned().collect();
+//     if !else_nodes.is_empty() {
+//         if let Some(else_node) = else_nodes.first() {
+//             Some(else_node)
+//         }
+//     }
+//     None
+// }
+
+pub fn get_else_node(tags: Vec<TagFinalPosition>, current_start:usize) -> Option<TagFinalPosition> {
+    let else_nodes: Vec<TagFinalPosition> = tags.iter()
+        .filter(|list_tag| list_tag.end ==current_start)
+        .cloned() // 使用 `cloned()` 来解引用并克隆 TagFinalPosition
+        .collect();
+
+    // 如果有匹配的节点，返回第一个
+    if !else_nodes.is_empty() {
+        Some(else_nodes[0].clone()) // 返回克隆的第一个节点
+    } else {
+        None // 如果没有匹配，返回 None
+    }
 }
 
 // pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Vec<TagFinalPosition> {
@@ -145,6 +211,8 @@ lazy_static! {
     pub static ref TAGS: HashSet<&'static str> = {
         let mut tags = HashSet::new();
         tags.insert("#if");
+        tags.insert("#else");
+        tags.insert("#elseif");
         tags.insert("#foreach");
         tags.insert("#end");
         tags
@@ -157,7 +225,7 @@ lazy_static! {
             .map(|tag| escape(*tag)) // 转义标签
             .collect::<Vec<String>>()
             .join("|"); // 使用 | 连接标签
-
+        println!("{:?}" ,pattern);
         Regex::new(&format!(r"({})", pattern)).unwrap() // 返回正则表达式
     };
 }
@@ -168,6 +236,17 @@ pub fn calculate_tag_positions(template: &str) -> Vec<TagPosition> {
     // 查找所有匹配的标签
     for (index, capture) in TAGS_PATTERN.find_iter(template).enumerate() {
         println!("{} - {} index:{}", index, capture.as_str(),capture.start());
+        if capture.as_str() =="#else" {
+            tag_positions.push(TagPosition {
+                tag: "#end".to_string(),
+                index: capture.start(), // 获取标签的字符下标
+            });
+        }else if capture.as_str() =="#elseif"{
+            tag_positions.push(TagPosition {
+                tag: "#end".to_string(),
+                index: capture.start(), // 获取标签的字符下标
+            });
+        }
         tag_positions.push(TagPosition {
             tag: capture.as_str().to_string(),
             index: capture.start(), // 获取标签的字符下标
@@ -182,18 +261,21 @@ pub fn calculate_tag_final_positions(tag_positions: Vec<TagPosition>) -> Result<
     let mut stack:Vec<TagPosition> = Vec::new(); // 用来存储开始标签的索引
 
     for tag_position in tag_positions {
+        println!("1111{:?}", tag_position);
         if TAGS.contains(&tag_position.tag.as_str()) {
-            if tag_position.tag.starts_with("#end") {
+            if tag_position.tag.starts_with("#end")  {
                 // 如果是 #end，尝试从栈中弹出一个开始标签
                 if let Some(start_tag) = stack.pop() {
                     let tag_final_position = TagFinalPosition {
                         tag: start_tag.tag.clone(),
                         start: start_tag.index,
                         end: tag_position.index,
-                        child: None
+                        child: None,
+                        else_node:None
                     };
                     final_positions.push(tag_final_position);
                 } else {
+                    println!("------------------------------{:?}", tag_position);
                     // 如果没有找到匹配的开始标签，说明不匹配，报错
                     return Err(format!("Unmatched #end at index {}", tag_position.index));
                 }
@@ -247,7 +329,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
 
 
 
-
+        println!("tag_start:{} tag_end:{}",tag_start,tag_end+3);
         let tag_text = &template[tag_start..=tag_end+3];
         println!("tag_text:{:?}", tag_text);
 
@@ -257,9 +339,9 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
             if let Some(pos) = tag_text.find(')') {
                 let child_start = tag_start+pos+1;
                 let child_end = tag_end ;
-                println!("tag_start:{} tag_end:{}",tag_start,tag_end);
+                // println!("tag_start:{} tag_end:{}",tag_start,tag_end);
                 println!("child_start:{:?} child_end:{}", child_start,child_end);
-                println!("total:{}", template.len());
+                // println!("total:{}", template.len());
                 let child_text = &template[child_start..child_end];
                 println!("child_text:{:?}", child_text);
 
@@ -272,20 +354,34 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                     child_node_list = parse_template(tag_start+pos+1,template, child);
                 }
             } else {
+                if tag.tag == "#else" {
+                    let child_text = &template[tag_start+tag_len..tag_end];
+                    if let Some(text_node) =text_node::new_node(child_text) {
+                        child_node_list = Some(vec![text_node]);
+                    }
+                }
                 //todo 抛出错误
             }
         }
 
 
+        println!("-------------------------------------------{:?}", tag);
+        if tag.tag == "#if" || tag.tag == "#else" || tag.tag == "#elseif" {
 
-        if tag.tag == "#if" {
             let condition = get_if_condition(tag_text);
-            if let Some(condition) = condition {
-                node_list.push(ExpressionNode::IfNode {condition: condition.parse().unwrap(), children: child_node_list });
+            println!("-----------------------------------------condition:{:?}",condition);
+            if  tag.tag=="#else" && condition.is_none()  {
+                node_list.push(ExpressionNode::IfNode {condition:"false".to_string(), children: child_node_list });
+            }else{
+                if let Some(condition) = condition {
+                    node_list.push(ExpressionNode::IfNode {condition: condition.parse().unwrap(), children: child_node_list });
 
-            }else {
-                //todo 提示解析异常
+                }else {
+
+                    //todo 提示解析异常
+                }
             }
+
         }else if tag.tag == "#foreach" {
             let condition = get_if_condition(tag_text);
             if let Some(condition) = condition {
@@ -386,7 +482,8 @@ mod tests {
                 tag: "#if".to_string(),
                 start: 0,
                 end: 14,
-                child: Some(Vec::new()) // 指定空的 Vec
+                child: Some(Vec::new()) ,// 指定空的 Vec
+                else_node:None
             }
         ]);
 
