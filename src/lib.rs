@@ -50,7 +50,7 @@ impl VelocityEngine {
         let final_positions = tag_parse::calculate_tag_final_positions(result);
         println!("final_positions:{:#?}",final_positions);
         let tree = tag_parse::build_tag_tree(final_positions.unwrap());
-        // println!("tree:{:#?}",tree);
+        println!("tree:{:#?}",tree);
 
         let mut node_list = None;
         if let Some(tree) = tree {

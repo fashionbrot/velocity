@@ -45,7 +45,7 @@ pub fn test(){
     let user_list_json = serde_json::to_value(user_list).expect("Failed to serialize users");
 
     let mut engine = VelocityEngine::new();
-    engine.insert("age",Value::Number(Number::from(19)));
+    engine.insert("age",Value::Number(Number::from(17)));
     engine.insert("userList",user_list_json);
     engine.insert("one",Value::Number(Number::from(1)));
     engine.insert("rust",Value::String("rust 2025".to_string()));
@@ -54,7 +54,7 @@ pub fn test(){
     let output = engine.render(template.as_str());
 
     println!("output:{:?}",output);
-    assert_eq!(output,"    import com.baomidou.mybatisplus.annotation.*;\n")
+    assert_eq!(output,"    else 18\n")
 }
 
 #[test]

@@ -10,7 +10,8 @@ pub enum ExpressionNode {
     },
     IfNode {
         condition: String,
-        children: Option<Vec<ExpressionNode>>,
+        children:  Option<Vec<ExpressionNode>>,
+        else_list: Option<Vec<ExpressionNode>>,
     },
     ForeachNode {
         collection: String,
@@ -31,7 +32,7 @@ impl ExpressionNode {
             start: 0,
             end: 0,
             child: None,
-            else_node: None,
+            else_list: None,
         }, None)
     }
 
