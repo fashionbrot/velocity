@@ -32,6 +32,10 @@ impl TagFinalPosition {
     }
 
     fn is_parent(&self, other: &TagFinalPosition) -> bool {
+        if self.start < other.start && self.end > other.end {
+            println!("------------------------------------------{} < {}     {} > {} ", self.start, other.start,self.end, other.end);
+        }
+
         self.start < other.start && self.end > other.end
     }
     fn is_child(&self, other: &TagFinalPosition) -> bool {
@@ -57,8 +61,11 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
         let current_tag = &tags[i];
         let mut current_tag = current_tag.clone();
 
+        println!("tree==================={:#?}", current_tag);
+
         // 获取当前标签的子标签
         let children = get_child(&list, &current_tag);
+        println!("treechildren==================={:#?}", children);
         if !children.is_empty() {
             children.iter().for_each(|child| {
                 if let Some(index) = list.iter().position(|x| x.start == child.start && x.end == child.end) {
@@ -66,11 +73,15 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
                 }
             })
         }
+
         current_tag.child = Some(children);
+
+
 
         // 将当前标签加入 list
         list.push(current_tag.clone());
 
+        //todo 错误了
         // 判断当前标签是否为根标签
         let is_parent = tags.iter().any(|m| m.is_parent(&current_tag));
         // println!("--is_parent:{:?} {:?}", is_parent, current_tag);
@@ -419,6 +430,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                                     else_child_node_list = Some(vec![text_node]);
                                 }
                             }else{
+                                println!("-------------------------------------------------------------------");
                                 else_child_node_list = parse_template(tag_start+pos,template, child);
                             }
                         }

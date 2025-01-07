@@ -218,6 +218,7 @@ fn evaluate_postfix(tokens: Vec<Token>) -> Result<bool, String> {
                     "<=" => Ok(left <= right),
                     "&&" => Ok(left != 0.0 && right != 0.0),
                     "||" => Ok(left != 0.0 || right != 0.0),
+                    "!=" => Ok(left != right),
                     _ => Err("Invalid operator".to_string()),
                 }?;
                 stack.push(if result { 1.0 } else { 0.0 });

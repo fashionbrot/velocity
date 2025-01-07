@@ -1,14 +1,10 @@
 #if($age>18)
     >18
-#elseif($age==18)
-    等于18
 #else
     else 18
-    #if($age>18)
-    >18
-    #elseif($age==18)
-    等于18
+    #if($age==17)
+        ==17
     #else
-    else 18
+        !=17
     #end
 #end

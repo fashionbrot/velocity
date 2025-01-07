@@ -31,7 +31,7 @@ pub fn test(){
         String::new() // 返回一个空字符串作为默认值
     };
 
-    println!("template: {}",template);
+    println!("template: {:?}",template);
 
     let user1 = User {
         username: "张三".to_string(),
