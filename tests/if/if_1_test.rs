@@ -16,9 +16,12 @@ fn tag_position_test() {
 
     println!("template: {:?}",template);
 
+
     let result =  tag_parse::calculate_tag_positions(&template);
 
     println!("result: {:?}",result);
+
+    println!("result: {:?}",&template[81..108]);
 
 }
 

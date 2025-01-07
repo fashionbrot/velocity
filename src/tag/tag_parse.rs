@@ -16,6 +16,7 @@ pub struct TagFinalPosition {
     pub tag: String,
     pub start: usize,
     pub end: usize,
+    pub pre:Option<usize>,
     pub child:Option<Vec<TagFinalPosition>>,
     pub else_list:Option<Vec<TagFinalPosition>>
 }
@@ -31,12 +32,39 @@ impl TagFinalPosition {
         }
     }
 
-    fn is_parent(&self, other: &TagFinalPosition) -> bool {
-        if self.start < other.start && self.end > other.end {
-            println!("------------------------------------------{} < {}     {} > {} ", self.start, other.start,self.end, other.end);
-        }
+    // fn is_parent(&self, other: &TagFinalPosition) -> bool {
+    //     if self.start < other.start && self.end > other.end {
+    //         println!("------------------------------------------{} < {}     {} > {} ", self.start, other.start,self.end, other.end);
+    //     }
+    //
+    //     self.start < other.start && self.end > other.end
+    // }
 
-        self.start < other.start && self.end > other.end
+    // fn is_root(&self,tag: &TagFinalPosition) -> bool {
+    //     if           self.start > tag.start && tag.start < self.start  && self.end > tag.end && tag.end < self.end {
+    //         println!("------------------------------------------{:?}",tag);
+    //     }
+    //     self.start > tag.start && tag.start < self.start  && self.end > tag.end && tag.end < self.end
+    // }
+    // fn is_root(&self, tags: &[TagFinalPosition]) -> bool {
+    //     !tags.iter().any(|tag| {
+    //         tag.start < self.start && tag.end > self.end
+    //     })
+    // }
+
+    fn is_root(&self, tags: &[TagFinalPosition]) -> bool {
+        if self.tag =="#else" || self.tag=="#elseif" {
+            return false;
+        }
+        for x in tags {
+            if x.start < self.start && self.start < x.end{
+                return false
+            }
+            if x.start < self.end && self.end < x.end {
+                return false
+            }
+        }
+        true
     }
     fn is_child(&self, other: &TagFinalPosition) -> bool {
         self.start > other.start && self.end < other.end
@@ -51,9 +79,10 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
     tags.sort_by_key(|tag| std::cmp::Reverse(tag.start));
     println!("tag---------\n{:#?}", tags);
 
-    let mut result = Vec::new();
+    let mut root_list = Vec::new();
     // let mut processed = vec![false; tags.len()]; // 标记哪些标签已经被处理过
-    let mut list = Vec::new();
+    let mut child_list_temp = Vec::new();
+    // let mut else_list_temp = Vec::new();
 
     // 遍历所有标签
     for i in 0..tags.len() {
@@ -63,73 +92,94 @@ pub fn build_tag_tree(mut tags: Vec<TagFinalPosition>) -> Option<Vec<TagFinalPos
 
         println!("tree==================={:#?}", current_tag);
 
+
+
         // 获取当前标签的子标签
-        let children = get_child(&list, &current_tag);
+        let mut children = get_child(&child_list_temp, &current_tag);
+        children.sort_by_key(|tag| tag.start);
+
         println!("treechildren==================={:#?}", children);
         if !children.is_empty() {
             children.iter().for_each(|child| {
-                if let Some(index) = list.iter().position(|x| x.start == child.start && x.end == child.end) {
-                    list.swap_remove(index);
+                if let Some(index) = child_list_temp.iter().position(|x| x.start == child.start && x.end == child.end) {
+                    child_list_temp.swap_remove(index);
                 }
             })
         }
-
+        println!("99999999999999999999999999 tag:{:?} children:{:?}", current_tag ,children);
         current_tag.child = Some(children);
 
 
+        println!("else------------------------------------------------------");
+        let mut else_node_list = vec![];
+        let mut current_end = current_tag.end;
+        while let Some(else_node) = get_else_list(&child_list_temp, current_end) {
+            current_end =else_node.end;
+            else_node_list.push(else_node.clone());
+            if let Some(index) = child_list_temp.iter().position(|x| x.start == else_node.start && x.end == else_node.end) {
+                child_list_temp.swap_remove(index);
+            }
+        }
+        current_tag.else_list = Some(else_node_list);
+        println!("else------------------------------------------------------");
+
 
         // 将当前标签加入 list
-        list.push(current_tag.clone());
+        child_list_temp.push(current_tag.clone());
+
+        let is_root = current_tag.is_root(&tags);
 
         //todo 错误了
         // 判断当前标签是否为根标签
-        let is_parent = tags.iter().any(|m| m.is_parent(&current_tag));
+        // let is_parent = tags.iter().any(|m| m.is_root(&current_tag));
         // println!("--is_parent:{:?} {:?}", is_parent, current_tag);
 
-        if !is_parent {
+        if is_root {
             // 如果当前标签没有子标签，将它加入结果中
-            println!("result push----------------{:#?}", current_tag);
-            result.push(current_tag);
+            println!("root------------------------------{:#?}", current_tag);
+            root_list.push(current_tag);
         }
     }
 
-    println!("111111111111-------------\n{:#?}", result);
-    if result.is_empty() {
+    // println!("111111111111-------------\n{:#?}", root_list);
+    // println!("111111111111-------------\n{:#?}", list);
+    if root_list.is_empty() {
         return None;
     }
 
+    root_list.sort_by_key(|tag| tag.start);
+    Some(root_list)
 
-
-    let mut data_list = result.clone();
-    let mut remove_map: HashMap<usize,usize> = HashMap::new();
-    //todo 需要放到上面去
-    for  tag in &mut data_list {
-        if tag.tag !="#if"  {
-            continue;
-        }
-        let mut else_node_list = vec![];
-        let mut current_end = tag.end;
-
-        println!("current_end: {} ",current_end);
-        while let Some((else_node,index)) = get_else_node(&result, current_end) {
-            else_node_list.push(else_node.clone());
-            current_end =else_node.end;
-            remove_map.insert(else_node.start,else_node.end);
-        }
-
-        tag.else_list = Some(else_node_list);
-    }
-
-    if !remove_map.is_empty() {
-        remove_map.iter().for_each(|(start, end)| {
-            if let Some(index) = data_list.iter().position(|node| node.start==*start && node.end==*end){
-                data_list.swap_remove(index);
-            }
-        })
-    }
-
-    data_list.sort_by_key(|tag| tag.start);
-    Some(data_list)
+    // let mut data_list = result.clone();
+    // let mut remove_map: HashMap<usize,usize> = HashMap::new();
+    // //todo 需要放到上面去
+    // for  tag in &mut data_list {
+    //     if tag.tag !="#if"  {
+    //         continue;
+    //     }
+    //     let mut else_node_list = vec![];
+    //     let mut current_end = tag.end;
+    //
+    //     println!("current_end: {} ",current_end);
+    //     while let Some((else_node,index)) = get_else_node(&list, current_end) {
+    //         else_node_list.push(else_node.clone());
+    //         current_end =else_node.end;
+    //         remove_map.insert(else_node.start,else_node.end);
+    //     }
+    //
+    //     tag.else_list = Some(else_node_list);
+    // }
+    //
+    // if !remove_map.is_empty() {
+    //     remove_map.iter().for_each(|(start, end)| {
+    //         if let Some(index) = data_list.iter().position(|node| node.start==*start && node.end==*end){
+    //             data_list.swap_remove(index);
+    //         }
+    //     })
+    // }
+    //
+    // data_list.sort_by_key(|tag| tag.start);
+    // Some(data_list)
 }
 
 
@@ -144,6 +194,14 @@ pub fn get_else_node(tags: &[TagFinalPosition], current_end: usize) -> Option<(&
         .enumerate() // 获取每个元素的索引和值
         .find(|(_, list_tag)| list_tag.start == current_end) // 根据条件找到符合的元素
         .map(|(index, tag)| (tag, index)) // 返回元素引用和其索引
+}
+
+pub fn get_else_list(tags: &[TagFinalPosition], current_end: usize) -> Option<&TagFinalPosition> {
+    // for tag in tags {
+    //     println!("Tag start: {}, current_end: {}", tag.start, current_end);
+    // }
+    tags.iter()
+        .find(|tag| tag.start == current_end)
 }
 
 
@@ -247,12 +305,16 @@ pub fn calculate_tag_positions(template: &str) -> Vec<TagPosition> {
         }else if capture.as_str() =="#elseif"{
             tag_positions.push(TagPosition {
                 tag: "#end".to_string(),
-                index: capture.start(), // 获取标签的字符下标
+                index: capture.start()+2, // 获取标签的字符下标
             });
         }
+        let mut index = capture.start();
+        // if index>0 {
+        //     index = index-1;
+        // }
         tag_positions.push(TagPosition {
             tag: capture.as_str().to_string(),
-            index: capture.start(), // 获取标签的字符下标
+            index: index, // 获取标签的字符下标
         });
     }
 
@@ -273,9 +335,12 @@ pub fn calculate_tag_final_positions(tag_positions: Vec<TagPosition>) -> Result<
                         tag: start_tag.tag.clone(),
                         start: start_tag.index,
                         end: tag_position.index,
+                        pre:None,
                         child: None,
-                        else_list:None
+                        else_list:None,
                     };
+
+                    println!("tag_final_position---tag:{:?}",tag_final_position);
                     final_positions.push(tag_final_position);
                 } else {
                     println!("------------------------------{:?}", tag_position);
@@ -294,6 +359,22 @@ pub fn calculate_tag_final_positions(tag_positions: Vec<TagPosition>) -> Result<
         return Err("There are unmatched #if or #foreach tags".to_string());
     }
 
+    // final_positions.sort_by_key(|p| p.start);
+
+    println!("11111111111111111111111111111{:#?}", final_positions);
+    let mut pre_end = None;
+    for  x in &mut final_positions {
+
+        if let Some(pre) = pre_end{
+            x.pre = pre;
+        }
+
+        pre_end = Some(Some(x.end+x.tag.len()));
+    }
+
+    println!("00000000000000000000000000000{:#?}", final_positions);
+
+
     Ok(final_positions)
 }
 
@@ -306,25 +387,30 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
         return None;
     }
 
-    let mut current_start = start;
     let first = start==0;
     let mut template_end = template.len();
+    // let mut current_start = start;
+    let mut pre_end = 0;
 
     for i in 0..tags.len() {
         let tag = &tags[i];
+        let tag_name = &tag.tag;
         let tag_start = tag.start;
         let tag_end = tag.end;
         let tag_child = &tag.child;
         let tag_len = tag.tag.len();
         let else_list = &tag.else_list;
+        if let Some(pre) = tag.pre{
+            pre_end = pre;
+        }
         println!(" tag: {} tag_len:{}",tag.tag,tag_len);
         // if current_start>0 {
         //     current_start = current_start+(tag_len+1);
         // }
 
-        println!("start {} -end  {} ", current_start,tag_start);
-        if current_start<tag_start {
-            let text =    &template[current_start..tag_start];
+        println!("start {} -end  {} ", pre_end,tag_start);
+        if  pre_end < tag_start {
+            let text =    &template[pre_end..tag_start];
             if let Some(text_node) =text_node::new_node(text) {
                 node_list.push(text_node);
             }
@@ -355,15 +441,16 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                     }
 
                 }else{
+
                     child_node_list = parse_template(tag_start+pos+1,template, child);
                 }
             } else {
-                if tag.tag == "#else" {
-                    let child_text = &template[tag_start+tag_len..tag_end];
-                    if let Some(text_node) =text_node::new_node(child_text) {
-                        child_node_list = Some(vec![text_node]);
-                    }
-                }
+                // if tag.tag == "#else" {
+                //     let child_text = &template[tag_start+tag_len..tag_end];
+                //     if let Some(text_node) =text_node::new_node(child_text) {
+                //         child_node_list = Some(vec![text_node]);
+                //     }
+                // }
                 //todo 抛出错误
             }
         }
@@ -375,19 +462,21 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
 
 
                 for else_tag in else_list {
-
-                    let tag_start = else_tag.start;
-                    let tag_end = else_tag.end;
+                    let tag_name = &else_tag.tag;
+                    let else_tag_start = else_tag.start;
+                    let else_tag_end = else_tag.end;
+                    let else_child = &else_tag.child;
 
                     if else_tag.tag == "#elseif" {
-                        let else_text = &template[else_tag.start..else_tag.end];
+                        let else_text = &template[else_tag_start..else_tag_end];
 
                         println!("else_tag-----------------------{:?}  else_text:{:?}", else_tag,else_text);
 
                         let mut else_child_node_list:Option<Vec<ExpressionNode>> = None;
                         if let Some(pos) = else_text.find(')') {
-                            let child_start = tag_start+pos+1;
-                            let child_end = tag_end ;
+                            let child_start = else_tag_start+pos+1;
+                            let child_end = else_tag_end ;
+
 
                             let else_child_text = &template[child_start..child_end];
                             println!("if_else_child_start:{:?} if_else_child_end:{} if_else_child_text:{:?}" , child_start,child_end,else_child_text);
@@ -397,7 +486,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                                         else_child_node_list = Some(vec![text_node]);
                                     }
                                 }else{
-                                    else_child_node_list = parse_template(tag_start+pos+1,template, child);
+                                    else_child_node_list = parse_template(child_start,template, child);
                                 }
                             }
                         }
@@ -417,21 +506,22 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
 
                         let mut else_child_node_list:Option<Vec<ExpressionNode>> = None;
                         let pos = else_tag.tag.len();
-                        let child_start = tag_start+pos;
-                        let child_end = tag_end ;
+                        let child_start = else_tag_start+pos;
+                        let child_end = else_tag_end ;
                         // println!("tag_start:{} tag_end:{}",tag_start,tag_end);
 
+                        // current_start = child_start;
                         // println!("total:{}", template.len());
                         let child_text = &template[child_start..child_end];
                         println!("else_child_start:{:?} else_child_end:{} child_text:{:?}", child_start,child_end,child_text);
-                        if let Some(child) = &else_tag.child{
+                        if let Some(child) = else_child{
                             if  child.is_empty() {
                                 if let Some(text_node) =text_node::new_node(child_text) {
                                     else_child_node_list = Some(vec![text_node]);
                                 }
                             }else{
                                 println!("-------------------------------------------------------------------");
-                                else_child_node_list = parse_template(tag_start+pos,template, child);
+                                else_child_node_list = parse_template(child_start,template, child);
                             }
                         }
 
@@ -445,6 +535,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
                 }
             }
         }
+
 
 
         println!("-------------------------------------------{:?}", tag);
@@ -486,13 +577,10 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
         }
 
 
-        current_start = tag_end+4;
-        println!("{}", current_start);
+        // current_start = tag_end+4;
+        // println!("{}", current_start);
 
         if first && i>0  &&i == tags.len()-1 {
-            if current_start>0 {
-                current_start = current_start+(tag_len+1);
-            }
             println!("start {} -end  {} ", tag_end,template_end);
             let text = &template[tag_end+4..template_end];
             println!("tag_end - template_last:{:?}", text);
@@ -500,7 +588,6 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
             if let Some(text_node) =text_node::new_node(text) {
                 node_list.push(text_node);
             }
-            // node_list.push(text_node::new_node(text));
         }
 
 
@@ -510,7 +597,7 @@ pub fn parse_template(start:usize, template:&str, tags: &Vec<TagFinalPosition>)-
         //     node_list.push(node);
         // }
     }
-
+    // node_list.sort_by_key(|tag| tag.start);
     Some(node_list)
 }
 
@@ -568,6 +655,7 @@ mod tests {
                 tag: "#if".to_string(),
                 start: 0,
                 end: 14,
+                pre:None,
                 child: Some(Vec::new()) ,// 指定空的 Vec
                 else_list:None
             }

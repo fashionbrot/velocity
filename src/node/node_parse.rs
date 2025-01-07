@@ -31,6 +31,7 @@ impl ExpressionNode {
             tag: "".to_string(),
             start: 0,
             end: 0,
+            pre:None,
             child: None,
             else_list: None,
         }, None)

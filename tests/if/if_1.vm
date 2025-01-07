@@ -1,10 +1,18 @@
-#if($age>18)
-    >18
+#if($age>17)
+    >17
 #else
-    else 18
-    #if($age==17)
-        ==17
+    else17
+
+    #if($age==18)
+        ==18
     #else
-        !=17
+        else18
     #end
+
+    #if($age==19)
+        ==19
+    #else
+        else19
+    #end
+
 #end
