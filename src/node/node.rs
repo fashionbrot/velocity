@@ -1,17 +1,7 @@
 use std::fmt::Debug;
 use regex::Match;
 use serde::{Deserialize, Serialize};
-use crate::tag::tag_parse::TagFinalPosition;
-
-pub trait Node: Debug {
-    fn tag_name(&self) -> &String;
-    fn start(&self) -> usize;
-    fn end(&self) -> usize;
-
-    fn println(&self) {
-        println!("Node Tag: {}, Start: {}, End: {}", self.tag_name(), self.start(), self.end());
-    }
-}
+use crate::tag::tag_parse::TAGS_PATTERN;
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct NodePosition {
@@ -21,85 +11,40 @@ pub struct NodePosition {
 }
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
-pub struct PairPosition{
-    pub begin_name:String,
-    pub begin:u32,
-    // pub begin_start:u32,
-    // pub begin_end:u32,
-    pub finish_name:String,
-    // pub finish_start:u32,
-    // pub finish_end:u32,
-    pub finish:u32,
-    pub child:Option<Vec<PairPosition>>,
-    pub branch:Option<Vec<PairPosition>>
+pub struct PositionTree {
+    pub start_name:String,
+    pub end_name:String,
+    pub start:u32,
+    pub end:u32,
+    pub child:Option<Vec<PositionTree>>,
+    pub branch:Option<Vec<PositionTree>>
 }
 
 
-impl PairPosition{
-    pub fn new(begin:NodePosition, finish:NodePosition)->PairPosition{
-        PairPosition{
-            begin_name: begin.tag_name,
-            // begin_start: begin.tag_start,
-            // begin_end: begin.tag_end,
-            begin: begin.tag_start,
-            finish_name:finish.tag_name,
-            // finish_start:finish.tag_start,
-            // finish_end:finish.tag_end,
-            finish: finish.tag_end,
+impl PositionTree {
+    pub fn new(begin:NodePosition, finish:NodePosition)-> PositionTree {
+        PositionTree {
+            start_name:begin.tag_name,
+            end_name: finish.tag_name,
+            start: begin.tag_start,
+            end: finish.tag_start,
             child: None,
             branch: None,
         }
     }
 
-    pub fn is_child(&self, other: &PairPosition) -> bool {
-        self.begin < other.begin && self.finish < other.finish
-    }
 
-    pub fn get_child(&self, list: &Vec<PairPosition>) -> Option<Vec<PairPosition>> {
-        if list.is_empty() {
-            return None;
-        }
-
-        let mut filtered: Vec<PairPosition> = list
-            .iter()
-            .filter(|p|  self.begin > p.begin &&  p.finish < self.finish )
-            .cloned()
-            .collect();
-
-        if filtered.is_empty() {
-            None
-        } else {
-            filtered.sort_by_key(|tag| tag.begin);
-            Some(filtered)
-        }
-    }
-
-    // pub fn is_root(&self, list: &Vec<PairPosition>) -> bool {
-    //     if self.begin_name =="#else" || self.begin_name=="#elseif" {
-    //         return false;
-    //     }
-    //     for x in list {
-    //         if x.begin > self.begin && self.begin > x.begin{
-    //             return false
-    //         }
-    //         if x.finish > self.finish && self.finish > x.finish {
-    //             return false
-    //         }
-    //     }
-    //     true
-    // }
-
-    pub fn is_root(&self, tags: &[PairPosition]) -> bool {
-        if self.begin_name =="#else" || self.begin_name=="#elseif" {
+    pub fn is_root(&self, tags: &[PositionTree]) -> bool {
+        if self.start_name =="#else" || self.start_name=="#elseif" {
             return false;
         }
-        let begin = self.begin;
-        let finish = self.finish - self.finish_name.len() as u32;
+        let start = self.start;
+        let end = self.end ;
         for x in tags {
-            if x.begin < begin && begin < x.finish{
+            if x.start < start && start < x.end{
                 return false
             }
-            if x.begin <finish && finish < x.finish {
+            if x.start <end && end < x.end {
                 return false
             }
         }
@@ -132,65 +77,108 @@ impl NodePosition {
 
 
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct TextNode {
-    pub text: String,
+
+pub fn build_tree_from_template(template:&str) ->Result<Vec<PositionTree>, String> {
+    if template.is_empty() {
+        return Err("template empty".to_string()); ;
+    }
+
+    //生成开始结束标签
+    let mut pair_position_list:Vec<PositionTree> = Vec::new();
+    let mut stack:Vec<NodePosition> = Vec::new(); // 用来存储开始标签的索引
+    for (index,capture) in TAGS_PATTERN.find_iter(template).enumerate() {
+        let node_position = NodePosition::build(&capture);
+        node_position.print();
+        let tag_name = &node_position.tag_name;
+
+        if tag_name == "#end" {
+            if let Some(position) = stack.pop() {
+                pair_position_list.push(PositionTree::new(position, node_position.clone()));
+            } else {
+                // 如果没有找到匹配的开始标签，说明不匹配，报错
+                return Err(format!("Unmatched #end at index {}", tag_name));
+            }
+        }else if tag_name == "#else" {
+            if let Some(position) = stack.pop() {
+                pair_position_list.push(PositionTree::new(position, node_position.clone()));
+                stack.push(node_position);
+            }
+        }else if tag_name == "#elseif" {
+            if let Some(position) = stack.pop() {
+                pair_position_list.push(PositionTree::new(position, node_position.clone()));
+                stack.push(node_position);
+            }
+        }else {
+            stack.push(node_position);
+        }
+    }
+    println!("pair position list: {:#?}",pair_position_list);
+
+    if pair_position_list.is_empty(){
+        return Ok(Vec::new());
+    }
+
+    //生成树形结构
+    pair_position_list.sort_by_key(|tag| std::cmp::Reverse(tag.start));
+    println!("111111111111111111  pair position list: {:#?}",pair_position_list);
+    let mut position_tree:Vec<PositionTree> = Vec::new();
+    let mut position_temp:Vec<PositionTree>  = Vec::new();
+    for pair in &pair_position_list {
+        let mut p = pair.clone();
+        let start = p.start;
+        let end = p.end;
+
+        println!("start: {:?} finish: {:?}", start, end);
+
+        //获取子节点&& 排序
+        // let child = get_child(&pair_position_list,&p);
+        let child:Vec<PositionTree> = position_temp
+            .iter()
+            .filter(|t|  start< t.start && end> t.end)
+            .cloned()
+            .collect();
+        println!("child: {:?}",child);
+        // //删除子节点在 position_temp 中的数据
+        if !child.is_empty() {
+            child.iter().for_each(|child| {
+                if let Some(index) = position_temp.iter().position(|x| x.start == child.start && x.end == child.end) {
+                    position_temp.swap_remove(index);
+                }
+            });
+            p.child = Some(child.clone());
+        }
+
+
+        //解析else elseif
+        let mut branch_list = vec![];
+        let mut current_end = end;
+        while let Some(branch) = get_branch(&position_temp, current_end) {
+            current_end =branch.end;
+            branch_list.push(branch.clone());
+            if let Some(index) = position_temp.iter().position(|x| x.start == branch.start && x.end == branch.end) {
+                position_temp.swap_remove(index);
+            }
+        }
+        if !branch_list.is_empty() {
+            p.branch = Some(branch_list);
+        }
+
+
+        position_temp.push(p.clone());
+
+        if p.is_root(&pair_position_list){
+            println!("root -------------------------------{:?}",p);
+            position_tree.push(p.clone());
+        }
+    }
+
+    println!("position tree: {:#?}",position_tree);
+
+
+    Ok(position_tree)
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct IfNode {
-    pub condition: String,
-    pub position:PairPosition
+pub fn get_branch(tags: &[PositionTree], current_end: u32) -> Option<&PositionTree> {
+    tags.iter()
+        .find(|tag| tag.start == current_end)
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct ForeachNode {
-    pub collection: String,
-    pub element: String,
-    pub position:PairPosition
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum TreeNode {
-    Text(TextNode),
-    If(IfNode),
-    Foreach(ForeachNode),
-}
-
-
-
-// impl Node for TextNode {
-//     fn tag_name(&self) -> &String {
-//         &self.tag_name
-//     }
-//     fn start(&self) -> usize {
-//         self.start
-//     }
-//     fn end(&self) -> usize {
-//         self.end
-//     }
-// }
-
-// impl Node for IfNode {
-//     fn tag_name(&self) -> &String {
-//         &self.tag_name
-//     }
-//     fn start(&self) -> usize {
-//         self.start
-//     }
-//     fn end(&self) -> usize {
-//         self.end
-//     }
-// }
-//
-// impl Node for ForeachNode {
-//     fn tag_name(&self) -> &String {
-//         &self.tag_name
-//     }
-//     fn start(&self) -> usize {
-//         self.start
-//     }
-//     fn end(&self) -> usize {
-//         self.end
-//     }
-// }
