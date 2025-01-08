@@ -3,7 +3,7 @@ use std::fmt::format;
 use regex::Regex;
 use serde_json::Value;
 use crate::node;
-use crate::node::node_parse::ExpressionNode;
+use crate::node::ExpressionNode;
 
 pub fn new_node_trim(text: &str) -> ExpressionNode {
     ExpressionNode::TextNode {

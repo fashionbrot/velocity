@@ -1,9 +1,7 @@
 use regex::{Regex, escape};
-use std::collections::{BTreeSet, HashMap, HashSet};
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use crate::node::{foreach_node, if_node, text_node};
-use crate::node::node_parse::ExpressionNode;
+use crate::node::{foreach_node, if_node, text_node, ExpressionNode, PositionTree};
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct TagPosition {
@@ -608,7 +606,7 @@ pub fn get_root_text(template:&str,start:usize,end:usize) -> &str{
 }
 
 
-fn get_if_condition(input: &str) -> Option<&str> {
+pub fn get_if_condition(input: &str) -> Option<&str> {
     // 查找 'if' 后面的 '(' 和第一个 ')'
     if let Some(start) = input.find('(') {
         if let Some(end) = input[start..].find(')') {
