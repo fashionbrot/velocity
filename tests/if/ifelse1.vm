@@ -1,0 +1,7 @@
+#if($age>18)
+    age>18
+#elseif($age<18)
+    age<18
+#elseif($age==18)
+    age==18
+#end

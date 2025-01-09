@@ -4,8 +4,7 @@ use velocity::read_file;
 use velocity::node::node_parse;
 
 use env_logger;
-use crate::log_config;
-
+mod log_config;
 #[test]
 pub fn build_tree_from_template_test() {
 

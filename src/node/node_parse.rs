@@ -245,9 +245,6 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
                     let child_last_end = else_tag.child_last_end;
 
                     println!("--child_last_end {:?}  read_index:{} {:?}",child_last_end,read_index ,else_tag);
-                    if let Some(child_last_end) = child_last_end{
-
-                    }
 
 
                     if branch_start_name == "#elseif" {

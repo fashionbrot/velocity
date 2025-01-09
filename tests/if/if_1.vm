@@ -1,19 +1,16 @@
 第一行
 #if($age>17)
-    age>17
-    #if($age=>18)
-        age>=18
-    #end
-    知道吗
+    >17
 #else
-    第三行
     else17
-
-    #if($age==18)
-        ==18
+    #if($age>18)
+        >18
     #else
         else18
+        #if($age>19)
+            >18
+        #else
+            else18
+        #end
     #end
-
-    3333333333333333
 #end
