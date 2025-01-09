@@ -176,7 +176,7 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
         let end_name_len = end_name.len();
         let tag_child = &position.child;
         let tag_branch = &position.branch;
-        let child_last_end = position.child_last_end;
+        let child_last_end = &position.child_last_end;
         // if let Some(child_last_end) = child_last_end {
         //     read_index = child_last_end;
         // }
@@ -193,30 +193,37 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
 
         println!("{} {} start_name:{} end_name:{}", start, end,start_name,end_name);
         let tag_text = &template[start..end];
-        println!("tag_text:{:?}", tag_text);
+        log::debug!("tag_text:{:?} child_last_end:{:?}", tag_text,child_last_end);
 
-        println!("tag_child:{:?}", tag_child);
+        println!("tag_child:{:?}  ", tag_child);
 
         read_index = end+end_name_len;
+        log::debug!("read_index: {}", read_index);
+        log::debug!("---------------------position:{:?}",position);
+        log::debug!("---------------------------");
+        let  child_expression_list_option: Option<Vec<ExpressionNode>> = parse_template_child(template,position);
 
-        let mut child_node_list: Option<Vec<ExpressionNode>> = None;
-        if let Some(pos) = tag_text.find(')') {
-            let child_start = start + pos + 1;
-            let child_end = end;
-            // println!("tag_start:{} tag_end:{}",tag_start,tag_end);
-            println!("child_start:{:?} child_end:{}", child_start, child_end);
-            // println!("total:{}", template.len());
-            let child_text = &template[child_start..child_end];
-            println!("child_text:{:?}", child_text);
 
-            // read_index = child_end;
+        log::debug!("start_name:{} end_name:{} start:{} end:{}",start_name,end_name ,start,end);
 
-            child_node_list = tag_child
-                .as_ref()
-                .filter(|child| !child.is_empty())//如果不为空执行 and_then
-                .and_then(|child| parse_template(child_start,template, &child))
-                .or_else(|| text_node::new_node(child_text).map(|text_node| vec![text_node]));
-        }
+
+        // if let Some(pos) = tag_text.find(')') {
+        //     let child_start = start + pos + 1;
+        //     let child_end = end;
+        //     // println!("tag_start:{} tag_end:{}",tag_start,tag_end);
+        //     println!("child_start:{:?} child_end:{}", child_start, child_end);
+        //     // println!("total:{}", template.len());
+        //     let child_text = &template[child_start..child_end];
+        //     println!("child_text:{:?}", child_text);
+        //
+        //     // read_index = child_end;
+        //
+        //     child_node_list = tag_child
+        //         .as_ref()
+        //         .filter(|child| !child.is_empty())//如果不为空执行 and_then
+        //         .and_then(|child| parse_template(child_start,template, &child))
+        //         .or_else(|| text_node::new_node(child_text).map(|text_node| vec![text_node]));
+        // }
 
 
 
@@ -228,12 +235,13 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
 
 
                 for else_tag in branch {
-                    let start_name = &else_tag.start_name;
-                    let end_name = &else_tag.end_name;
-                    let end_name_len = end_name.len();
-                    let else_tag_start = else_tag.start;
-                    let else_tag_end = else_tag.end;
-                    let else_child = &else_tag.child;
+                    let branch_start_name = &else_tag.start_name;
+                    let branch_start_name_len = branch_start_name.len();
+                    let branch_end_name = &else_tag.end_name;
+                    let branch_end_name_len = branch_end_name.len();
+                    let branch_start = else_tag.start;
+                    let branch_end = else_tag.end;
+                    let branch_child = &else_tag.child;
                     let child_last_end = else_tag.child_last_end;
 
                     println!("--child_last_end {:?}  read_index:{} {:?}",child_last_end,read_index ,else_tag);
@@ -242,24 +250,24 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
                     }
 
 
-                    if start_name == "#elseif" {
-                        let else_text = &template[else_tag_start..else_tag_end];
+                    if branch_start_name == "#elseif" {
+                        let else_text = &template[branch_start..branch_end];
 
-                        println!("else_tag-----------------------{:?}  else_text:{:?}", else_tag,else_text);
+                        // println!("else_tag-----------------------{:?}  else_text:{:?}", else_tag,else_text);
 
                         let mut branch_child_node_list:Option<Vec<ExpressionNode>> = None;
                         if let Some(pos) = else_text.find(')') {
-                            let child_start = else_tag_start+pos+1;
-                            let child_end = else_tag_end ;
+                            let child_start = branch_start+pos+1;
+                            let child_end = branch_end ;
                             let child_text = &template[child_start..child_end];
 
-                            read_index = child_end+end_name_len;
+                            read_index = child_end+branch_end_name_len;
 
                             println!("if_else_child_start:{:?} if_else_child_end:{} if_else_child_text:{:?}" , child_start,child_end,child_text);
-                            branch_child_node_list = else_child
+                            branch_child_node_list = branch_child
                                 .as_ref()
                                 .filter(|child| !child.is_empty())//如果不为空执行 and_then
-                                .and_then(|child| parse_template(read_index,template, &child))
+                                .and_then(|child| parse_template(read_index,template, child))
                                 .or_else(|| text_node::new_node(child_text).map(|text_node| vec![text_node]));
                         }
 
@@ -272,20 +280,20 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
                             });
                         }
 
-                    }else if start_name == "#else" {
+                    }else if branch_start_name == "#else" {
 
                         let mut branch_child_node_list:Option<Vec<ExpressionNode>> = None;
-                        let pos = start_name.len();
-                        let child_start = else_tag_start+pos;
-                        let child_end = else_tag_end ;
+                        let pos = branch_start_name_len;
+                        let child_start = branch_start+pos;
+                        let child_end = branch_end ;
 
                         let child_text = &template[child_start..child_end];
                         println!("else_child_start:{:?} else_child_end:{} child_text:{:?}", child_start,child_end,child_text);
 
-                        read_index = child_end+end_name_len;
+                        read_index = child_end+branch_end_name_len;
 
 
-                        branch_child_node_list = else_child
+                        branch_child_node_list = branch_child
                             .as_ref()
                             .filter(|child| !child.is_empty())//如果不为空执行 and_then
                             .and_then(|child| parse_template(read_index,template, &child))
@@ -314,7 +322,7 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
             if let Some(condition) = condition {
                 expression_list.push(ExpressionNode::IfNode {
                     condition: condition.parse().unwrap(),
-                    children: child_node_list,
+                    children: child_expression_list_option,
                     else_list: Some(branch_list)
                 });
             }
@@ -326,14 +334,23 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
                     expression_list.push(ExpressionNode::ForeachNode {
                         collection: left,
                         element: right,
-                        children: child_node_list,
+                        children: child_expression_list_option,
                     });
                 }
             }
         }
 
 
-        // read_index = end;
+        println!("-------------------------------------------read_index:{} start:{} end:{} template_len:{}", read_index,start,end,template_len);
+        if start==0 && tree.last() == Some(position) {
+
+            let text = &template[end_name_len+end..template_len];
+            println!("last_text:{:?} start:{} end:{}",text,(end_name_len+end),template_len);
+            if let Some(text_node) =text_node::new_node(text) {
+                expression_list.push(text_node);
+            }
+        }
+
 
     }
 
@@ -341,6 +358,64 @@ pub fn parse_template(start:usize,template:&str, tree: &Vec<PositionTree>)-> Opt
     Some(expression_list)
 }
 
+
+
+pub fn parse_template_child(template:&str,position:&PositionTree) -> Option<Vec<ExpressionNode>>{
+    let start = position.start;
+    let end = position.end;
+    let start_name = &position.start_name;
+    let end_name = &position.end_name;
+    let end_name_len = end_name.len();
+    let tag_child = &position.child;
+    let child_last_end = &position.child_last_end;
+    log::debug!("position:{:?}",position);
+    let mut expression_list:Vec<ExpressionNode> = Vec::new();
+
+    let tag_text = &template[start..end];
+    log::debug!("parse_template_child tag_text:{:?} start:{} end:{} start_name:{} end_name:{} child_last_end:{:?}",tag_text,start,end,start_name,end_name,child_last_end);
+    if let Some(pos) = tag_text.find(')') {
+        let child_start = start + pos + 1;
+        let child_end = end;
+        // println!("tag_start:{} tag_end:{}",tag_start,tag_end);
+        log::debug!("child_start:{:?} child_end:{}", child_start, child_end);
+        // println!("total:{}", template.len());
+        let child_text = &template[child_start..child_end];
+        log::debug!("child_text:{:?}", child_text);
+
+        if let Some(child) =  tag_child{
+            if child.is_empty() {
+                if let Some(text_node) =text_node::new_node(child_text) {
+                    log::debug!("text_node:{:?}",text_node);
+                    expression_list.push(text_node);
+                }
+            }else{
+                let child_expression_list = parse_template(child_start,template, &child);
+                if let Some(child_expression_list) = child_expression_list {
+                    expression_list.extend(child_expression_list);
+                }
+            }
+        }else{
+            if let Some(text_node) =text_node::new_node(child_text) {
+                log::debug!("text_node:{:?}",text_node);
+                expression_list.push(text_node);
+            }
+        }
+        log::debug!("-------------")
+    }
+
+    if let Some(child_last_end) = child_last_end{
+        if child_last_end < &end  {
+            log::debug!("start:{:?} end:{}",child_last_end+end_name_len,end);
+            let text =    &template[*child_last_end+end_name_len..end];
+            if let Some(text_node) =text_node::new_node(text) {
+                log::debug!("text_node:{:?}",text_node);
+                expression_list.push(text_node);
+            }
+        }
+    }
+
+    Some(expression_list)
+}
 
 pub fn get_if_condition(input: &str) -> Option<&str> {
     // 查找 'if' 后面的 '(' 和第一个 ')'

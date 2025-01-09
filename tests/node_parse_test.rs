@@ -1,9 +1,15 @@
 
+
 use velocity::read_file;
 use velocity::node::node_parse;
 
+use env_logger;
+use crate::log_config;
+
 #[test]
 pub fn build_tree_from_template_test() {
+
+    log_config::print_debug_log();
 
     let template_path = "tests/if/if_1.vm";
     let template = if let Ok(content) = read_file(template_path) {
@@ -28,6 +34,9 @@ pub fn build_tree_from_template_test() {
 
 #[test]
 pub fn parse_template_test(){
+
+    log_config::print_debug_log();
+
     let template_path = "tests/if/if_1.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
