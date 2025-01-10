@@ -9,6 +9,8 @@ pub mod tag;
 pub mod node;
 pub mod expression;
 
+pub mod token;
+
 // 编译正则表达式
 lazy_static::lazy_static! {
     static ref RE: Regex = Regex::new(r"\$\{ *([^}]+) *\}").unwrap();

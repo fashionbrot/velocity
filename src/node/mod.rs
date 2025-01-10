@@ -5,9 +5,6 @@ pub mod if_node;
 pub mod foreach_node;
 pub mod text_node;
 
-
-
-
 use std::fmt::Debug;
 use lazy_static::lazy_static;
 use regex::{escape, Match, Regex};
@@ -24,6 +21,7 @@ lazy_static! {
         tags.push("#elseif");
         tags.push("#else");
         tags.push("#foreach");
+        tags.push("#set");
         tags.push("#end");
         tags
     };
@@ -47,6 +45,18 @@ pub struct NodePosition {
     pub tag_name: String,
     pub tag_start:usize,
     pub tag_end :usize,
+}
+
+use std::fmt;
+
+impl fmt::Display for NodePosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "NodePosition {{ tag_name: {}, tag_start: {}, tag_end: {} }}",
+            self.tag_name, self.tag_start, self.tag_end
+        )
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]

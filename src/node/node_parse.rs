@@ -130,7 +130,7 @@ pub fn get_branch(tags: &[PositionTree], current_end: usize) -> Option<&Position
 //     max_end
 // }
 
-fn get_child_last_end(tree: &PositionTree) -> usize {
+pub fn get_child_last_end(tree: &PositionTree) -> usize {
     // 初始化为当前节点的 end
 
     let mut child_max = 0 ;

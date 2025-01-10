@@ -3,14 +3,13 @@
     >17
 #else
     else17
-    #if($age>18)
-        >18
-    #else
-        else18
-        #if($age>19)
-            >18
-        #else
-            else18
-        #end
-    #end
+    #set($age="18")
 #end
+中间一行
+#if($age>17)
+    >17
+#else
+    else17
+    #set($age="18")
+#end
+最后一行
