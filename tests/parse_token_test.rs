@@ -91,7 +91,7 @@ fn parse_position_token_test() {
 pub fn parse(){
     log_config::print_debug_log();
 
-    let template_path = "tests/if/if2.vm";
+    let template_path = "tests/if/if_1.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
     } else {

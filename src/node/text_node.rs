@@ -24,11 +24,11 @@ pub fn new_node(text: &str) -> Option<ExpressionNode> {
 
         if is_wrapped_with_crlf(text) {
             // println!("is_wrapped_with_crlf text:--------{:?}-----------",text);
-            return Some(ExpressionNode::TextNode {
+             Some(ExpressionNode::TextNode {
                 text:  format!("{}\n",remove_surrounding_crlf(text)),
             });
         }else{
-            return Some(ExpressionNode::TextNode {
+             Some(ExpressionNode::TextNode {
                 text:  text.to_string(),
             });
         }
