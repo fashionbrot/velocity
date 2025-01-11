@@ -134,7 +134,7 @@ pub fn parse(){
 struct User{
     pub age: i32,
     pub name: String,
-    pub list: Vec<i32>,
+    pub list: Vec<String>,
 }
 
 #[test]
@@ -156,7 +156,7 @@ pub fn parse_(){
             let user = User{
                 age: 18,
                 name: "张三".to_string(),
-                list: vec![1,2,3],
+                list: vec![String::from("张三"), String::from("李四"), String::from("王五")],
             };
 
             let mut map = token_parse::object_to_hashmap(&user);
