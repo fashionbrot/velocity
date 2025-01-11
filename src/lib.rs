@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
 
 #[derive(Debug)]
 pub struct VelocityEngine {
-    context: HashMap<String, Value>,
+    pub context: HashMap<String, Value>,
     // 存储变量的上下文
     tag_handlers: Vec<&'static str>,
 }

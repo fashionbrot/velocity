@@ -2,7 +2,7 @@ use env_logger;
 use std::io::Write;
 
 pub fn print_debug_log(){
-    std::env::set_var("RUST_LOG", "debug");
+    std::env::set_var("RUST_LOG", "info");
     env_logger::Builder::from_default_env()
         .format(|buf, record| {
             writeln!(

@@ -4,6 +4,7 @@ pub mod node_parse;
 pub mod if_node;
 pub mod foreach_node;
 pub mod text_node;
+pub mod set_parse;
 
 use std::fmt::Debug;
 use lazy_static::lazy_static;

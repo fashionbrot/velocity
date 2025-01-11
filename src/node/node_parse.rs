@@ -111,24 +111,6 @@ pub fn get_branch(tags: &[PositionTree], current_end: usize) -> Option<&Position
 }
 
 
-// fn get_child_last_end(tree: &PositionTree) -> usize {
-//     let mut max_end = 0; // 初始化为当前节点的 `end`
-//
-//     // 检查子节点集合
-//     if let Some(children) = &tree.child {
-//         let last = children.iter().last();
-//         if let Some(last) = last {
-//             max_end = last.end;
-//             let child_last_end = get_child_last_end(last);
-//             if child_last_end ==0 {
-//                 return max_end;
-//             }
-//         }
-//     }
-//
-//
-//     max_end
-// }
 
 pub fn get_child_last_end(tree: &PositionTree) -> usize {
     // 初始化为当前节点的 end
