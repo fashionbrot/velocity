@@ -800,3 +800,17 @@ fn remove_surrounding_crlf(input: &str) -> String {
 
     format!("{}{}{}", start_text, m_text, end_text)
 }
+
+
+pub fn object_to_hashmap<T: Serialize>(obj: &T) -> HashMap<String, Value> {
+    // 将泛型对象转换为 serde_json::Value
+    let json_value: Value = serde_json::to_value(obj).unwrap();
+
+    // 提取 Value::Object 部分，即 BTreeMap<String, Value>，并转换为 HashMap<String, Value>
+    if let Value::Object(map) = json_value {
+        map.into_iter().collect() // 将 BTreeMap 转换为 HashMap
+    } else {
+        // 如果转换失败，返回一个空的 HashMap
+        HashMap::new()
+    }
+}

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Number, Value};
 use velocity::{read_file, VelocityEngine};
 use velocity::token::token_parse;
@@ -100,7 +101,7 @@ pub fn parse(){
 
     println!("template: {:?}", template);
 
-    for x in 0..100  {
+    for x in 0..10  {
         if let Some (tokens) = token_parse::get_tokens(&template){
             let list = Value::Array(vec![
                 json!({"name": "item1", "value": 1}),
@@ -126,6 +127,47 @@ pub fn parse(){
 
 
 
+
+}
+
+#[derive(Debug,Serialize,Deserialize)]
+struct User{
+    pub age: i32,
+    pub name: String,
+    pub list: Vec<i32>,
+}
+
+#[test]
+pub fn parse_(){
+
+
+    log_config::print_debug_log();
+
+    let template_path = "tests/if/if_1.vm";
+    let template = if let Ok(content) = read_file(template_path) {
+        content // 直接将 String 赋值给 template
+    } else {
+        String::new() // 返回一个空字符串作为默认值
+    };
+
+    println!("template: {:?}", template);
+    for x in 0..1  {
+        if let Some (tokens) = token_parse::get_tokens(&template){
+            let user = User{
+                age: 18,
+                name: "张三".to_string(),
+                list: vec![1,2,3],
+            };
+
+            let mut map = token_parse::object_to_hashmap(&user);
+
+            let value = token_parse::parse_token(&tokens, &mut map);
+            if let Some(value) = value {
+                println!("------------------------------------\n{}", value);
+                println!("----------------------------------------------------------------------")
+            }
+        }
+    }
 
 }
 
