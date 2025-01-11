@@ -6,10 +6,11 @@
     #set($age="18")
 #end
 中间一行
-#if($age>17)
-    >17
-#else
-    else17
-    #set($age="18")
-#end
+123 #if($age>17)>17#end "前面有个空格"456
 最后一行
+
+#if($age>17)
+    $age>17
+#elseif($age<17)
+    $age<17
+#end
