@@ -162,9 +162,9 @@ lazy_static! {
 
     static ref FOREACH_REGEX:Regex = Regex::new(r"#foreach\(\s*(.*?)\s*\)").unwrap();
 
-    static ref IF_REGEX:Regex = Regex::new(r"(?s)#if\s*\(\s*(.*?)\s*\)").unwrap();
+    static ref IF_REGEX:Regex = Regex::new(r"(?s)#if\s*\(\s*([^()]*(\([^()]*\))*[^()]*)\)").unwrap();
 
-    static ref ELSE_IF_REGEX:Regex = Regex::new(r"(?s)#elseif\s*\(\s*(.*?)\s*\)").unwrap();
+    static ref ELSE_IF_REGEX:Regex =Regex::new(r"(?s)#elseif\s*\(\s*([^()]*(\([^()]*\))*[^()]*)\)").unwrap();
 }
 
 

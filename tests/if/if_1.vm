@@ -9,7 +9,7 @@ ${age}
 #end
 中间一行
 123 #if($age>17)>17#end "前面有个空格"456
-最后一行 #if
+最后一行 #if( true &&  true) true #end
 
 
 ${age}
@@ -21,6 +21,12 @@ ${age}
         $age<17
     #end
 
+#end
+
+#if(false)
+    111111111111
+    #elseif(1==1 && true)
+    222222222222
 #end
 
 

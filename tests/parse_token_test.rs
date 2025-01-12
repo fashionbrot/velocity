@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Number, Value};
 use velocity::{parse_template, parse_template_object, read_file};
 use velocity::token::token_parse;
+use velocity::token::token_parse::Tokenizer;
 use crate::log_config;
 
 
@@ -45,7 +46,24 @@ fn parse_position_token_test() {
     // log::debug!("14-34 {:?}",&template[49..307]);
 
     let result = token_parse::parse_position(&template, 0);
-    log::debug!("result:{:#?}",result);
+    println!("result:{:#?}",result);
+
+
+}
+
+#[test]
+pub fn prase_template_token(){
+    log_config::print_debug_log();
+
+    let template_path = "tests/if/if_1.vm";
+    let template = if let Ok(content) = read_file(template_path) {
+        content // 直接将 String 赋值给 template
+    } else {
+        String::new() // 返回一个空字符串作为默认值
+    };
+
+    let tokens = token_parse::get_tokens(&template);
+    println!("tokens: {:#?}", tokens);
 }
 
 #[test]
@@ -107,7 +125,7 @@ pub fn parse_(){
 
 
     println!("template: {:?}", template);
-    for x in 0..1000  {
+    for x in 0..1  {
         let output_result = parse_template_object(&template,&user);
         if let Ok(output) = output_result{
             println!("------------------------------------\n{}", output);
