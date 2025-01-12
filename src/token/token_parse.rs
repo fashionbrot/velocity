@@ -1,16 +1,15 @@
 use std::collections::HashMap;
+use std::f32::consts::E;
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use log::log;
 use meval::tokenizer::Token;
-use regex::Regex;
+use regex::{escape, Regex};
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use serde_json::Value::String as JsonString;
 use crate::expression::expression_evaluator;
-use crate::node;
-use crate::node::{ExpressionNode, PositionTree, TAGS_PATTERN};
-use crate::node::text_node::{new_node};
+use crate::parse::{foreach_parse, if_parse, set_parse, text_parse};
 
 #[derive(Debug,Clone)]
 pub enum Tokenizer{
@@ -41,8 +40,8 @@ pub enum IfBranch {
 
 
 impl IfBranch {
-    pub fn new(condition: String, children: Option<Vec<Tokenizer>>) -> IfBranch {
-        IfBranch::If { condition, children }
+    pub fn new(condition: String, children: Vec<Tokenizer>) -> IfBranch {
+        IfBranch::If { condition, children: Some(children) }
     }
 }
 
@@ -59,55 +58,15 @@ impl Tokenizer {
         Tokenizer::If{branches}
     }
 
-    pub fn new_foreach(element: &str, collection: &str, children: Option<Vec<Tokenizer>>) -> Self {
+    pub fn new_foreach(element: &str, collection: &str, children: Vec<Tokenizer>) -> Self {
         Tokenizer::Foreach {
             element:element.to_string(),
             collection:collection.to_string(),
-            children,
+            children:Some(children),
         }
     }
 }
 
-
-#[derive(Debug)]
-pub enum Position{
-    Text{
-        start:usize,
-        end:usize
-    },
-    Set{
-        start:usize,
-        end:usize
-    },
-    If{
-        branches: Vec<IfPosition>,
-    },
-    Foreach{
-        first_name: String,
-        first_start:usize,
-        first_end :usize,
-        last_name:String,
-        last_start:usize,
-        last_end:usize,
-        element: String,
-        collection: String,
-        children: Vec<Position>
-    }
-
-}
-
-#[derive(Debug)]
-pub enum IfPosition{
-    If{
-        first_name: String,
-        first_start:usize,
-        first_end :usize,
-        last_name:String,
-        last_start:usize,
-        last_end:usize,
-        children: Vec<Position>
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize,Clone,PartialEq)]
 pub struct TokenPosition {
@@ -121,16 +80,6 @@ pub struct TokenPosition {
 }
 impl TokenPosition {
 
-    pub fn new(first_name: &str, first_start: usize, first_end: usize, last_name: &str, last_start: usize, last_end: usize) -> Self {
-        TokenPosition{
-            first_name:first_name.to_string(),
-            first_start,
-            first_end,
-            last_name:last_name.to_string(),
-            last_start,
-            last_end,
-        }
-    }
     pub fn build(start:&NodePosition,end:&NodePosition) -> Self {
         TokenPosition{
             first_name:start.name.to_string(),
@@ -186,9 +135,39 @@ impl NodePosition {
 
 
 lazy_static! {
+     pub static ref TAGS: Vec<&'static str> = {
+        let mut tags = Vec::new();
+        tags.push("#if");
+        tags.push("#elseif");
+        tags.push("#else");
+        tags.push("#foreach");
+        tags.push("#end");
+        tags
+    };
+
+
+        // 定义静态正则表达式模式，避免每次计算
+    pub static ref TAGS_PATTERN: Regex = {
+        // 生成正则表达式模式
+        let pattern = TAGS.iter()
+            .map(|tag| escape(*tag)) // 转义标签
+            .collect::<Vec<String>>()
+            .join("|"); // 使用 | 连接标签
+        println!("pattern-------------{:?}" ,pattern);
+        Regex::new(&format!(r"({})", pattern)).unwrap() // 返回正则表达式
+    };
+
     // 创建一个静态的 Mutex 包裹的 HashMap
     static ref TOKEN_CACHE: Arc<Mutex<HashMap<String, Vec<Tokenizer>>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    static ref FOREACH_REGEX:Regex = Regex::new(r"#foreach\(\s*(.*?)\s*\)").unwrap();
+
+    static ref IF_REGEX:Regex = Regex::new(r"(?s)#if\s*\(\s*(.*?)\s*\)").unwrap();
+
+    static ref ELSE_IF_REGEX:Regex = Regex::new(r"(?s)#elseif\s*\(\s*(.*?)\s*\)").unwrap();
 }
+
+
 
 // set 方法：将键值对插入到静态的 HashMap 中
 fn set(key: String, value: Vec<Tokenizer>) {
@@ -203,7 +182,7 @@ fn get(key: &str) -> Option<Vec<Tokenizer>> {
 }
 
 
-pub fn get_tokens(template:&str) ->  Option<Vec<Tokenizer>>{
+pub fn get_tokens(template:&str) ->  Result<Vec<Tokenizer>,String>{
 
     let md5 = md5::compute(&template);
     let key = format!("{:x}", md5);
@@ -213,18 +192,26 @@ pub fn get_tokens(template:&str) ->  Option<Vec<Tokenizer>>{
         token_list = tokens;
     }
 
-    if token_list.is_empty() {
-        if let Ok(token_position_list) = parse_position(&template,0) {
-            if let Some(tokens) = position_to_tokenizer(template,&token_position_list) {
-                set(key, tokens.clone());
-                return Some(tokens);
-            }
-        }
-    }else{
-        return Some(token_list);
+    if !token_list.is_empty() {
+        return Ok(token_list);
     }
 
-    None
+    match parse_position(&template,0) {
+        Ok(token_position_list)=>{
+            match  position_to_tokenizer(template,&token_position_list) {
+                Ok(tokens)=>{
+                    set(key, tokens.clone());
+                    Ok(tokens)
+                },
+                Err(e)=>{
+                    Err(e)
+                }
+            }
+        },
+        Err(e)=>{
+            Err(e)
+        }
+    }
 }
 
 
@@ -237,7 +224,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
         .map(|capture| (capture.start(), capture.as_str()))
         .collect();
 
-    println!("{:?}", captures);
+    // println!("{:?}", captures);
     let mut token_position_list = Vec::new();
 
     for (first_start, first_name) in captures {
@@ -297,8 +284,8 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
         let last_end = position.last_end;
         let first_name = &position.first_name;
         let last_name = &position.last_name;
-        log::debug!("---------- position first_name:{} last_name:{} first_start:{} last_end:{}",first_name,last_name,first_start,last_end);
 
+        log::debug!("---------- position first_name:{} last_name:{} first_start:{} last_end:{}",first_name,last_name,first_start,last_end);
 
         if position.is_root(&token_position_list) {
             if read_index < first_start  {
@@ -319,7 +306,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
     Ok(position_list)
 }
 
-pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Option<Vec<Tokenizer>>{
+pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Result<Vec<Tokenizer>,String>{
 
     let mut tokens:Vec<Tokenizer> = Vec::new();
     let mut position_list_temp:Vec<TokenPosition> = Vec::new();
@@ -358,28 +345,23 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
 
             let mut if_last_name = last_name.clone();
             let mut if_last_start = last_start;
-
             let mut temp = position.clone();
             loop {
 
-
-                let if_token =  parse_if(template,&temp);
-                if let Some(token) = if_token {
-                    if_tokens.push(token);
-                }else{
-                    break;
+                let if_token_result =  parse_if(template,&temp);
+                if if_token_result.is_err() {
+                    return Err(if_token_result.unwrap_err());
                 }
+                let if_branch = if_token_result.unwrap();
+                if_tokens.push(if_branch);
 
                 if last_name == "#end" {
                     break;
                 }
+
                 let else_position =position_list.iter()
                     .find(|t|  if_last_name == t.first_name && if_last_start == t.first_start)
                     .cloned();
-
-                log::debug!("current:{:?}",temp);
-                log::debug!("else_position：{:?}",else_position);
-
                 if let Some(token_position) = else_position {
                     if_last_name = token_position.last_name.clone();
                     if_last_start = token_position.last_start;
@@ -415,10 +397,14 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
             if let Ok(token_position) = token_position_result {
                 token_position_list.extend(token_position);
             }
-            let children_tokens = position_to_tokenizer(&foreach_child_text, &mut token_position_list);
 
-            let re = Regex::new(r"#foreach\(\s*(.*?)\s*\)").unwrap();
-            if let Some(captures) = re.captures(foreach_all_text) {
+            let children_tokens_result = position_to_tokenizer(&foreach_child_text, &mut token_position_list);
+            if children_tokens_result.is_err() {
+                return children_tokens_result;
+            }
+            let children_tokens = children_tokens_result.unwrap();
+
+            if let Some(captures) = FOREACH_REGEX.captures(foreach_all_text) {
                 if let Some(condition) = captures.get(1) {
                     let condition_str = condition.as_str();
                     // 按照 "in" 分割
@@ -427,8 +413,8 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
                     if parts.len() == 2 {
                         let variable = parts[0];
                         let collection = parts[1];
-                        println!("Variable: {}", variable);
-                        println!("Collection: {}", collection);
+                        // println!("Variable: {}", variable);
+                        // println!("Collection: {}", collection);
 
                         let foreach_text = &template[first_start..last_start];
                         let foreach_expression_end = foreach_text.find(")");
@@ -437,12 +423,12 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
 
                         if let Some(child_start) = foreach_expression_end {
                             foreach_child_text_start = first_end + child_start + 1;
-                            log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
+                            // log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
                             foreach_child_text = &template[foreach_child_text_start..last_start];
 
-                            log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
+                            // log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
                         } else {
-                            //TODO error
+                            return Err("foreach Syntax error".to_string())
                         }
 
 
@@ -450,7 +436,7 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
 
                         tokens.push(foreach_token);
                     } else {
-                        println!("Invalid condition format.");
+                        return Err("foreach Syntax error".to_string())
                     }
                 }
             }
@@ -458,11 +444,11 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Op
         position_list_temp.push(position.clone());
     }
 
-    Some(tokens)
+    Ok(tokens)
 }
 
 
-pub fn parse_if(template:&str, position:&TokenPosition) -> Option<IfBranch> {
+pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,String> {
 
     let first_name = &position.first_name;
     let last_name = &position.last_name;
@@ -483,11 +469,15 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Option<IfBranch> {
             token_position_list.extend(token_position);
         }
 
-        let children_tokens = position_to_tokenizer(child_text, &mut token_position_list);
+        let children_tokens_result = position_to_tokenizer(child_text, &mut token_position_list);
+        if children_tokens_result.is_err() {
+            return Err(children_tokens_result.unwrap_err());
+        }
+        let children_tokens = children_tokens_result.unwrap();
 
         log::debug!("children tokens:{:?}",children_tokens);
         let if_token = IfBranch::new("true".to_string(),children_tokens);
-        return Some(if_token);
+        return Ok(if_token);
 
     }else if first_name=="#if" || first_name=="#elseif" {
 
@@ -510,307 +500,78 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Option<IfBranch> {
             token_position_list.extend(token_position);
         }
 
-        let children_tokens = position_to_tokenizer(if_child_text, &mut token_position_list);
+        let children_tokens_result = position_to_tokenizer(if_child_text, &mut token_position_list);
+        if children_tokens_result.is_err() {
+            return Err(children_tokens_result.unwrap_err());
+        }
+        let children_tokens = children_tokens_result.unwrap();
         log::debug!("children_tokens:{:#?}",children_tokens);
 
         let text = &template[first_start..last_start];
-        let mut re = Regex::new(r"(?s)#if\s*\(\s*(.*?)\s*\)").unwrap();
-        if first_name=="#elseif" {
-            re = Regex::new(r"(?s)#elseif\s*\(\s*(.*?)\s*\)").unwrap();
-        }
-        if let Some(captures) = re.captures(text) {
-            if let Some(condition) = captures.get(1) {
-                log::debug!("-------------condition:{:?}",condition.as_str());
-                let if_token = IfBranch::new(condition.as_str().to_string(),children_tokens);
-                return Some(if_token);
+
+
+        if first_name == "#if" {
+            if let Some(captures) = IF_REGEX.captures(text) {
+                if let Some(condition) = captures.get(1) {
+                    // log::debug!("-------------condition:{:?}",condition.as_str());
+                    let if_token = IfBranch::new(condition.as_str().to_string(),children_tokens);
+                    return Ok(if_token);
+                }
+            }
+        }else if first_name == "#elseif" {
+            if let Some(captures) = ELSE_IF_REGEX.captures(text) {
+                if let Some(condition) = captures.get(1) {
+                    // log::debug!("-------------condition:{:?}",condition.as_str());
+                    let if_token = IfBranch::new(condition.as_str().to_string(),children_tokens);
+                    return Ok(if_token);
+                }
             }
         }
     }
 
-    None
+    Err("Unknown token".to_string())
 }
 
 
-pub fn parse_token(tokens:&[Tokenizer],content: &mut HashMap<String, Value>) -> Option<String> {
+pub fn parse_tokens(tokens:&[Tokenizer], content: &mut HashMap<String, Value>) -> Option<String> {
     if tokens.is_empty() {
         return None;
     }
 
-    let mut value = "".to_string();
+    let mut output = String::new();
     for token in tokens {
-        let v = get_node_text(token,content);
+        let v = parse_token(token,content);
         if let Some(v) = v {
-            value.push_str(&v);
+            output.push_str(&v);
         }
     }
 
-    Some(value)
+    Some(output)
 }
 
 
-pub fn get_node_text(token:&Tokenizer,content: &mut HashMap<String, Value>) -> Option<String>{
+pub fn parse_token(token:&Tokenizer,content: &mut HashMap<String, Value>) -> Option<String>{
     match token {
         Tokenizer::Text { .. } => {
-            text_parse(&token, content)
+            text_parse::text_parse(&token, content)
         }
         Tokenizer::Set { .. } => {
-            set_parse(token,content)
+            set_parse::set_parse(token,content)
         }
-        Tokenizer::If { branches} => {
-            if_parse(token,content)
+        Tokenizer::If { ..} => {
+            if_parse::if_parse(token,content)
         }
         Tokenizer::Foreach { .. } => {
-            parse_foreach(token,content)
+            foreach_parse::foreach_parse(token,content)
         }
     }
 }
 
 
-pub fn text_parse(token:&Tokenizer, context: &mut HashMap<String, Value>) -> Option<String> {
-
-    if let Tokenizer::Text { text } = token {
-        if text.is_empty() {
-            return None;
-        }
-        let value =normalize_variable_syntax(text.as_str(),context);
-        return parse_string(&value);
-    }
-
-    None
-
-}
-
-pub fn set_parse(token :&Tokenizer, content: &mut HashMap<String, Value>) -> Option<String>{
-
-    if let Tokenizer::Set { key,value } = token {
-        println!("key:{} vlaue:{}",key,value);
-        let k = extract_variable(&key);
-        if let Some(key) = k{
-            if let Ok(number) = value.trim_matches('"').parse::<isize>() {
-                println!("Parsed as number: key:{} value:{}", key, number);
-                if let Some(value) = content.get_mut(&key) {
-                    *value = Value::Number(Number::from(number));
-                }else{
-                    content.insert(key, Value::Number(Number::from(number)));
-                }
-            } else {
-                println!("Parsed as string: key:{} value:{}", key, value);
-                if let Some(value) = content.get_mut(&key) {
-                    *value = Value::String(value.to_string());
-                }else{
-                    content.insert(key, Value::String(value.to_string()));
-                }
-            }
-        }
-
-    }
-
-    None
-}
-
-fn extract_variable(input: &String) -> Option<String> {
-    // 使用懒加载正则，避免每次调用都编译正则
-    lazy_static::lazy_static! {
-        static ref RE: Regex = Regex::new(r"^\$\{?(.*?)\}?$").unwrap();
-    }
-
-    // 尝试匹配并提取变量名
-    RE.captures(&input)
-        .and_then(|caps| caps.get(1).map(|m| m.as_str().to_string()))
-}
 
 
 
-pub fn if_parse(token:&Tokenizer, context:&mut HashMap<std::string::String, Value>) -> Option<String> {
-    if let Tokenizer::If { branches} = token {
-        for branch in branches {
-            if let IfBranch::If{condition,children,..} = branch {
-
-                let if_condition = normalize_variable_syntax(condition.as_str(),context);
-
-                if let Ok(expression) = expression_evaluator::evaluate_expression(&if_condition) {
-                    if expression {
-                        println!("if expression:{:?}",expression);
-
-                        if let Some(child) = children{
-
-                            let mut output = String::new();
-                            for child_token in child {
-
-                                let result = get_node_text(child_token,context);
-
-                                if let Some(text) = result {
-                                    if let Some(value) = parse_string(&text) {
-                                        output.push_str(&value);
-                                    }else{
-                                        output.push_str(&text);
-                                    }
-                                }
-                            }
-                            return Some(output);
-                        }
-                    }
-                }
-
-            }
-        }
-    }
-    None
-}
 
 
 
-pub fn parse_foreach(token:&Tokenizer, context:&mut HashMap<String, Value>) -> Option<std::string::String> {
 
-    if let Tokenizer::Foreach { element,collection,children } = token {
-        let mut output = String::new();
-
-        let mut element_key = element.to_string();
-        if let Some(key) = extract_variable(&element_key) {
-            element_key  = key.to_string();
-        }
-        let mut collection_key = collection.to_string();
-        if let Some(key) = extract_variable(&collection_key) {
-            collection_key = key.to_string();
-        }
-
-
-        log::debug!("parse_foreach key:{:?} element:{} collection:{}",element_key,element,collection);
-
-        // 从 context 中获取集合对象
-        if let Some(Value::Array(list)) = context.get(&collection_key) {
-            // 将集合对象更新到 context 中
-            // context.insert(key, Value::Array(list.clone()));
-            let items = list.clone();
-            // 遍历数组中的每个元素
-            for item in items {
-                log::debug!("Processing item: {:?}", item);
-
-                context.insert(element_key.clone(), item);
-
-                if let Some(child) = children{
-                    for child_token in child {
-                        let result = get_node_text(child_token,context);
-                        if let Some(text) = result {
-
-                            let value = normalize_variable_syntax(text.as_str(),context);
-
-                            if let Some(value) = parse_string(&value) {
-                                output.push_str(&value);
-                            }else{
-                                output.push_str(&value);
-                            }
-
-                        }
-                    }
-                }
-
-            }
-        }
-        return Some(output);
-    }
-
-    None
-}
-
-
-lazy_static::lazy_static! {
-    static ref RE: Regex = Regex::new(r"\$\{ *([^}]+) *\}|\$([a-zA-Z_][a-zA-Z0-9_]*)").unwrap(); // 支持 $age 和 ${age}
-}
-
-pub fn normalize_variable_syntax(input: &str, context: &HashMap<String, Value>) -> String {
-    // 使用正则表达式进行替换
-    RE.replace_all(input, |caps: &regex::Captures| {
-        // 检查是 ${} 形式还是 $ 形式
-        let key = if let Some(key) = caps.get(1) {
-            key.as_str().trim()
-        } else if let Some(key) = caps.get(2) {
-            key.as_str()
-        } else {
-            return String::new(); // 如果没有匹配到有效的变量，返回空字符串
-        };
-
-        // 查找对应的值
-        match context.get(key) {
-            Some(value) => match value {
-                Value::String(s) => s.clone(), // 如果是 String 类型，直接返回内容，不加引号
-                Value::Number(n) => n.to_string(), // 如果是数字，转换为字符串
-                Value::Bool(b) => b.to_string(),   // 如果是布尔值，转换为字符串
-                _ => format!("{}", value), // 其他类型，直接转换为字符串
-            },
-            None => format!("${{{}}}", key), // 如果没找到，返回原始变量格式
-        }
-    })
-        .to_string()
-}
-
-
-pub fn parse_string(text: &String) -> Option<String> {
-    if text.len()>1 {
-        if text.len()==2 && text.starts_with("\r\n") {
-            return None;
-        }
-
-        if is_wrapped_with_crlf(text) {
-            return Some(format!("{}\n",remove_surrounding_crlf(text)));
-        }else{
-           return Some(text.to_string());
-        }
-    }
-    None
-}
-
-fn is_wrapped_with_crlf(input: &str) -> bool {
-    let trimmed = input
-        .trim_start_matches(' ')  // 去掉开头的空格
-        .trim_end_matches(' ');   // 去掉结尾的空格
-    if input.matches("\r\n").count()==1 {
-        return false;
-    }
-    // println!("is_wrapped_with_crlf trimmed:{:?}",trimmed);
-    trimmed.starts_with("\r\n") && trimmed.ends_with("\r\n")
-}
-fn remove_surrounding_crlf(input: &str) -> String {
-
-    if input.starts_with("\r\n") && input.ends_with("\r\n") {
-        return  input[2..input.len() - 2].to_string();
-    }
-
-    let start_ = input.find("\r\n");
-    let end_ = input.rfind("\r\n");
-    if start_.is_none() || end_.is_none() {
-        return input.to_string();
-    }
-    let start = start_.unwrap();
-    let end = end_.unwrap();
-
-    if input.starts_with("\r\n") {
-        let m_text = &input[2..end];
-        let end_text = &input[end+2..];
-        return format!("{}{}", m_text, end_text)
-    }else if input.ends_with("\r\n") {
-        let start_text = &input[0..start];
-        let m_text = &input[(start+2)..end];
-        return format!("{}{}", start_text, m_text)
-    }
-
-    let start_text = &input[0..start];
-    let m_text = &input[(start+2)..end];
-    let end_text = &input[end+2..];
-
-    format!("{}{}{}", start_text, m_text, end_text)
-}
-
-
-pub fn object_to_hashmap<T: Serialize>(obj: &T) -> HashMap<String, Value> {
-    // 将泛型对象转换为 serde_json::Value
-    let json_value: Value = serde_json::to_value(obj).unwrap();
-
-    // 提取 Value::Object 部分，即 BTreeMap<String, Value>，并转换为 HashMap<String, Value>
-    if let Value::Object(map) = json_value {
-        map.into_iter().collect() // 将 BTreeMap 转换为 HashMap
-    } else {
-        // 如果转换失败，返回一个空的 HashMap
-        HashMap::new()
-    }
-}

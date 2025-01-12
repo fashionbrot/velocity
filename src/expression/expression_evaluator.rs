@@ -1,5 +1,6 @@
 use std::collections::VecDeque;
 use std::str::FromStr;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 #[derive(Debug, PartialEq)]
@@ -10,28 +11,34 @@ enum Token {
     Boolean(bool),
 }
 
+lazy_static! {
+    static ref TOKEN_REGEX: Regex = Regex::new(
+        r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}"
+    ).unwrap();
+}
+
 pub fn evaluate_expression(expression: &str) -> Result<bool, String> {
-    println!("Evaluating expression: {}", expression);
+    // println!("Evaluating expression: {}", expression);
     let tokens = tokenize(expression);
     if tokens.is_err() {
         return Err(tokens.unwrap_err());
     }
 
-    println!("tokens: {:#?}", tokens);
+    // println!("tokens: {:#?}", tokens);
     let postfix = infix_to_postfix(tokens.unwrap());
     if postfix.is_err() {
         return Err(postfix.unwrap_err());
     }
-    println!("postfix: {:#?}", postfix);
+    // println!("postfix: {:#?}", postfix);
     evaluate_postfix(postfix.unwrap())
 }
 fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
     let mut tokens = Vec::new();
 
     // 修改正则表达式，增加对 true 和 false 的支持
-    let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}").unwrap();
+    // let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}").unwrap();
 
-    for cap in re.captures_iter(expression) {
+    for cap in TOKEN_REGEX.captures_iter(expression) {
         if let Some(num) = cap.get(1) {
             // 处理数字
             tokens.push(Token::Number(num.as_str().parse().unwrap()));
@@ -58,94 +65,7 @@ fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
     Ok(tokens)
 }
 
-// fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
-//     let mut tokens = Vec::new();
-//
-//     // 修改正则表达式，增加对 true 和 false 的支持
-//     let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)").unwrap();
-//
-//     for cap in re.captures_iter(expression) {
-//         if let Some(num) = cap.get(1) {
-//             // 处理数字
-//             tokens.push(Token::Number(num.as_str().parse().unwrap()));
-//         } else if let Some(op) = cap.get(3) {
-//             // 处理操作符
-//             tokens.push(Token::Operator(op.as_str().to_string()));
-//         } else if let Some(paren) = cap.get(4) {
-//             // 处理括号
-//             tokens.push(Token::Parenthesis(paren.as_str().chars().next().unwrap()));
-//         } else if let Some(bool_str) = cap.get(5) {
-//             // 处理布尔值 true 和 false
-//             let boolean = match bool_str.as_str() {
-//                 "true" => Token::Boolean(true),
-//                 "false" => Token::Boolean(false),
-//                 _ => return Err(format!("Unexpected boolean value: {}", bool_str.as_str())),
-//             };
-//             tokens.push(boolean);
-//         }
-//     }
-//
-//     Ok(tokens)
-// }
 
-// fn tokenize(input: &str) -> Result<Vec<Token>, String> {
-//     let mut tokens = Vec::new();
-//     let mut chars = input.chars().peekable(); // 使用 peekable 以便可以看下一个字符
-//
-//     while let Some(c) = chars.next() {
-//         match c {
-//             ' ' | '\t' | '\n' => {
-//                 // 跳过空白字符
-//                 continue;
-//             }
-//             '(' | ')' => {
-//                 // 处理括号
-//                 tokens.push(Token::Parenthesis(c));
-//             }
-//             '0'..='9' | '.' => {
-//                 // 处理数字
-//                 let mut num_str = c.to_string();
-//                 while let Some(&next_c) = chars.peek() {
-//                     if next_c.is_digit(10) || next_c == '.' {
-//                         num_str.push(chars.next().unwrap());
-//                     } else {
-//                         break;
-//                     }
-//                 }
-//                 let num = f64::from_str(&num_str).map_err(|e| e.to_string())?;
-//                 tokens.push(Token::Number(num));
-//             }
-//             '+' | '-' | '*' | '/' | '>' | '<' | '=' | '&' | '|' => {
-//                 // 处理操作符
-//                 let mut op = c.to_string();
-//                 if let Some(&next_c) = chars.peek() {
-//                     if (c == '+' || c == '-' || c == '=') && next_c == '=' {
-//                         op.push(chars.next().unwrap());
-//                     } else if (c == '&' || c == '|') && next_c == c {
-//                         op.push(chars.next().unwrap());
-//                     }
-//                 }
-//                 tokens.push(Token::Operator(op));
-//             }
-//             't' | 'f' => {
-//                 // 处理布尔值 "true" 和 "false"
-//                 let boolean_str: String = std::iter::once(c).chain(chars.by_ref().take(3)).collect();
-//                 if boolean_str == "true" {
-//                     tokens.push(Token::Boolean(true));
-//                 } else if boolean_str == "false" {
-//                     tokens.push(Token::Boolean(false));
-//                 } else {
-//                     return Err(format!("Unexpected boolean value: {}", boolean_str));
-//                 }
-//             }
-//             _ => {
-//                 return Err(format!("Unexpected character: {}", c));
-//             }
-//         }
-//     }
-//     Ok(tokens)
-// }
-//
 
 fn infix_to_postfix(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
     let mut output = Vec::new();
