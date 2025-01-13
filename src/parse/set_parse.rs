@@ -49,8 +49,12 @@ pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
             let new_value = if let Ok(parsed_bool) = v.parse::<bool>() {
                 Value::Bool(parsed_bool)
             } else if let Ok(parsed_array) = serde_json::from_str::<Vec<Value>>(v.as_str()) {
+                let len = parsed_array.len();
+                update_content(context, format!("{}.size",&key).as_str(), Value::Number(Number::from(len)));
                 Value::Array(parsed_array)
             } else if let Ok(map) = serde_json::from_str::<Map<String, Value>>(v.as_str()) {
+                let len = map.len();
+                update_content(context, format!("{}.size",&key).as_str(), Value::Number(Number::from(len)));
                 Value::Object(map)
             } else if let Ok(string) = v.parse::<String>(){
                 Value::String(string)
@@ -62,6 +66,7 @@ pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
                 Value::String(v)
             };
 
+            log::debug!("---------------------------{:#?}",context);
             update_content(context, &key, new_value);
 
         }

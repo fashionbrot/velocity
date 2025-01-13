@@ -2,7 +2,7 @@
 #set($age = 25)
 #set($isMember = true)
 #set($cart = ["Book", "Pen", "Notebook"])
-#set($profile = {"username": "alice123", "email": "alice@example.com"})
+#set($profile = [{"username":"张三","age":18},{"username":"李四","age":19}])
 #set($price=10)
 #set($discount = $price * 0.1)
 #set($isEligible = $age >= 18 && $isMember)
@@ -15,8 +15,11 @@ profile = ${profile}
 discount = ${discount}
 isEligible = ${isEligible}
 
+profile.size = ${profile.size}
 #foreach($item in $profile)
-    profile item = ${item}
+    index:${foreach.index} count:${foreach.count} first:${foreach.first} last:${foreach.last}
 #end
 
+
+${profile.size}
 

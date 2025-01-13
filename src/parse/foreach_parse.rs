@@ -1,5 +1,7 @@
 use std::collections::HashMap;
-use serde_json::{Number, Value};
+use std::fmt::format;
+use serde_json::{json, Map, Number, Value};
+use serde_json::Value::Object;
 use crate::parse::{text_parse, variable_parse};
 use crate::token::token_parse::{parse_token, Tokenizer};
 
@@ -25,114 +27,137 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
         // log::debug!("context:{:#?}", context);
         log::debug!("----------children:{:#?}", children);
         log::debug!("parse_foreach key:{:?} element:{} collection:{}",element_key,element,collection);
-        // log::debug!("foreach collection_key:{:?}  collection_value:{:?}",&collection_key,&context.get_mut(&collection_key));
 
 
 
-        // if let Some(value) = &context.get(&collection_key) {
-        //     match value {
-        //         Value::Array(list) => {
-        //             // 处理数组
-        //             let items = list.clone();
-        //             let mut index = 0;
-        //             for item in items {
-        //
-        //                 update_content(context, &element_key, item);
-        //                 update_content(context, "foreach.index", Value::Number(Number::from(index)));
-        //
-        //                 let mut child_output = String::new();
-        //                 if let Some(child) = children {
-        //                     for child_token in child {
-        //                         log::debug!("foreach children token:{:?}", &child_token);
-        //                         if let Some(text) = parse_token(&child_token, context) {
-        //                             let value = variable_parse::normalize_variable_syntax(text.as_str(), context);
-        //                             child_output.push_str(&value);
-        //                         }
-        //                     }
-        //                 }
-        //
-        //                 if let Some(text) = text_parse::parse_string(&child_output) {
-        //                     output.push_str(&text);
-        //                 } else {
-        //                     output.push_str(&child_output);
-        //                 }
-        //
-        //                 index += 1;
-        //             }
-        //         }
-        //         Value::Object(map) => {
-        //             // 处理对象
-        //             for (key, value) in map {
-        //
-        //                 log::debug!("foreach child key:{:?} value:{:?}",&key,&value);
-        //                 // update_content(context, &element_key, value);
-        //                 // update_content(context, format!("{}",&element_key), value);
-        //                 // update_content(context, "foreach.value", value.clone());
-        //
-        //                 let mut child_output = String::new();
-        //                 if let Some(child) = children {
-        //                     for child_token in child {
-        //                         // log::debug!("foreach children token:{:?}", &child_token);
-        //                         if let Some(text) = parse_token(&child_token.clone(), context) {
-        //                             let value = variable_parse::normalize_variable_syntax(text.as_str(), context);
-        //                             child_output.push_str(&value);
-        //                         }
-        //                     }
-        //                 }
-        //
-        //                 if let Some(text) = text_parse::parse_string(&child_output) {
-        //                     output.push_str(&text);
-        //                 } else {
-        //                     output.push_str(&child_output);
-        //                 }
-        //             }
-        //         }
-        //         _ => {
-        //             log::warn!("Unsupported type for collection_key: {:?}", value);
-        //         }
-        //     }
-        // }
+        if let Some(value) = context.get(&collection_key){
 
+            if let Value::Object(map) = value {
+                let size =  map.len();
+                let hash_map:serde_json::Map<String, Value>  = map.clone();
 
+                let mut index = 0;
+                let mut count    = 1;
+                let mut has_next = true;
+                let mut first = true;
+                let mut  last = true;
+                for mm in hash_map{
+                    let key = mm.0;
+                    let value = mm.1;
 
+                    if index==0 {
+                        first = true;
+                        last = false;
+                    }
+                    if index+1 == size {
+                        has_next = false;
+                        last = true;
+                    }
 
-        // // 从 context 中获取集合对象
-        if let Some(Value::Array(list)) = context.get(&collection_key) {
-            // 将集合对象更新到 context 中
-            // context.insert(key, Value::Array(list.clone()));
-            let items = list.clone();
+                    update_content(context, "foreach.count", Value::Number(Number::from(count)));
+                    update_content(context, "foreach.first", Value::Bool(first));
+                    update_content(context, "foreach.hasNext", Value::Bool(has_next));
+                    update_content(context, "foreach.index", Value::Number(Number::from(index)));
+                    update_content(context, "foreach.last", Value::Bool(last));
 
-            let mut index = 0;
-            // 遍历数组中的每个元素
-            for item in items {
+                    let mut mv: serde_json::Map<String, Value> =Map::<String,Value>::new();
+                    mv.insert(key.to_string(),value.clone());
 
-                update_content(context, &element_key, item);
-                update_content(context, "foreach.index", Value::Number(Number::from(index)));
+                    update_content(context, &element_key, Value::Object(mv));
+                    update_content(context, format!("{}.key",&element_key).as_str(), Value::String(key.to_string()));
+                    update_content(context, format!("{}.value",&element_key).as_str(), value.clone());
 
-                let mut child_output = String::new();
-                if let Some(child) = children{
-                    for child_token in child {
-                        log::debug!("foreach children token:{:?}",&child_token);
-                        let result = parse_token(child_token,context);
-                        if let Some(text) = result {
+                    let mut child_output = String::new();
 
-                            let value = variable_parse::normalize_variable_syntax(text.as_str(),context);
-                            child_output.push_str(&value);
+                    if let Some(child) = children{
+                        for child_token in child {
+                            log::debug!("foreach children token:{:?}",&child_token);
+                            let result = parse_token(child_token,context);
+                            if let Some(text) = result {
+
+                                let value = variable_parse::normalize_variable_syntax(text.as_str(),context);
+                                child_output.push_str(&value);
+                            }
                         }
                     }
+
+                    if let Some(text) = text_parse::parse_string(&child_output){
+                        output.push_str(&text);
+                    }else{
+                        output.push_str(&child_output);
+                    }
+                    index += 1;
                 }
 
-                if let Some(text) = text_parse::parse_string(&child_output){
-                    output.push_str(&text);
-                }else{
-                    output.push_str(&child_output);
+            }else if let Value::Array(list) = value{
+                let items = list.clone();
+                let size = list.len();
+
+                log::debug!("foreach context:{:?}",context);
+                let mut index = 0;
+                let mut count    = 1;
+                let mut has_next = true;
+                let mut first = true;
+                let mut  last = true;
+                for item in items {
+
+                    log::debug!("foreach item:{:?}",&item);
+                    log::debug!("foreach value is map:{:?}",item.is_object());
+
+                    if index==0 {
+                        first = true;
+                        last = false;
+                    }else{
+                        first = false;
+                    }
+                    if index+1 == size {
+                        has_next = false;
+                        last = true;
+                    }
+
+                    if item.is_object() {
+                        let map = item.as_object().unwrap();
+                        for (key,value) in map {
+                            update_content(context, format!("{}.{}", &element_key, &key).as_str(), value.clone());
+                        }
+                    }
+
+                    update_content(context, &element_key, item);
+                    update_content(context, "foreach.count", Value::Number(Number::from(count)));
+                    update_content(context, "foreach.first", Value::Bool(first));
+                    update_content(context, "foreach.hasNext", Value::Bool(has_next));
+                    update_content(context, "foreach.index", Value::Number(Number::from(index)));
+                    update_content(context, "foreach.last", Value::Bool(last));
+                    update_content(context, format!("{}.index",&element_key).as_str(), Value::Number(Number::from(index)));
+
+                    log::debug!("foreach context:{:#?}",&context);
+
+                    let mut child_output = String::new();
+                    if let Some(child) = children{
+                        for child_token in child {
+                            log::debug!("foreach children token:{:?}",&child_token);
+                            let result = parse_token(child_token,context);
+                            if let Some(text) = result {
+
+                                let value = variable_parse::normalize_variable_syntax(text.as_str(),context);
+                                child_output.push_str(&value);
+                            }
+                        }
+                    }
+
+                    if let Some(text) = text_parse::parse_string(&child_output){
+                        output.push_str(&text);
+                    }else{
+                        output.push_str(&child_output);
+                    }
+
+
+                    log::debug!("output:{:#?}",&output);
+                    index += 1;
+                    count+=1;
                 }
-                // log::debug!("Processing item: {:?}", item);
-                log::debug!("context:{:#?}", context);
-                index += 1;
+
             }
-
-
         }
 
         return Some(output);
