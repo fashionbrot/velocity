@@ -1,18 +1,4 @@
-第一行
-#set($age=20)
-${age}
-#if($age>17)
-    >17
-#else
-    else17
 
-#end
-中间一行
-123 #if($age>17)>17#end "前面有个空格"456
-最后一行 #if( true &&  true) true #end
-
-
-${age}
 #foreach($obj in $list)
      $obj
     #if($age>17)
@@ -20,14 +6,7 @@ ${age}
     #elseif($age<17)
         $age<17
     #end
+    123
+    345
 
 #end
-
-#if(false)
-    111111111111
-    #elseif(1==1 && true)
-    222222222222
-#end
-
-
-my name is ${name}

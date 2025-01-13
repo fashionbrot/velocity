@@ -19,7 +19,12 @@ fn parse_position_test() {
     };
 
     println!("template: {:?}", template);
+    // println!("template: {:?}", &template[487..487+36]);
 
+    // // for x in template.chars().enumerate(){
+    // //     println!("{} {}",x.1,x.0 );
+    // // }
+    //
     let result = token_parse::parse_position(&template, 0);
 
     println!("result: {:#?}", result);

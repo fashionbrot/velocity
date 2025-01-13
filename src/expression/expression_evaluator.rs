@@ -12,7 +12,7 @@ enum Token {
 }
 
 lazy_static! {
-    static ref TOKEN_REGEX: Regex = Regex::new(
+    static ref EXPRESSION_TOKEN_REGEX: Regex = Regex::new(
         r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}"
     ).unwrap();
 }
@@ -38,7 +38,7 @@ fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
     // 修改正则表达式，增加对 true 和 false 的支持
     // let re = Regex::new(r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}").unwrap();
 
-    for cap in TOKEN_REGEX.captures_iter(expression) {
+    for cap in EXPRESSION_TOKEN_REGEX.captures_iter(expression) {
         if let Some(num) = cap.get(1) {
             // 处理数字
             tokens.push(Token::Number(num.as_str().parse().unwrap()));
@@ -153,6 +153,9 @@ fn evaluate_postfix(tokens: Vec<Token>) -> Result<bool, String> {
         Err("Invalid expression".to_string())
     }
 }
+
+
+
 
 
 #[cfg(test)]

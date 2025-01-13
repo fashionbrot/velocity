@@ -141,6 +141,7 @@ lazy_static! {
         tags.push("#elseif");
         tags.push("#else");
         tags.push("#foreach");
+        tags.push("#set");
         tags.push("#end");
         tags
     };
@@ -160,11 +161,7 @@ lazy_static! {
     // 创建一个静态的 Mutex 包裹的 HashMap
     static ref TOKEN_CACHE: Arc<Mutex<HashMap<String, Vec<Tokenizer>>>> = Arc::new(Mutex::new(HashMap::new()));
 
-    static ref FOREACH_REGEX:Regex = Regex::new(r"#foreach\(\s*(.*?)\s*\)").unwrap();
 
-    static ref IF_REGEX:Regex = Regex::new(r"(?s)#if\s*\(\s*([^()]*(\([^()]*\))*[^()]*)\)").unwrap();
-
-    static ref ELSE_IF_REGEX:Regex =Regex::new(r"(?s)#elseif\s*\(\s*([^()]*(\([^()]*\))*[^()]*)\)").unwrap();
 }
 
 
@@ -258,13 +255,28 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
                 stack.push(node_position);
             }
         }else if first_name =="#set" {
-            let set_end = template[first_end..].find(')').map(|pos| first_end + pos);
-            if let Some(end_pos) = set_end {
-                let position = NodePosition::new("#set",first_end+1,end_pos+1);
-                log::debug!("start:{:?}   end:{:?}", node_position,position);
-                let token_position= TokenPosition::build(&node_position,&position);
-                token_position_list.push(token_position);
+            let last_text = &template[first_start..];
+            let last_start_option = find_tag_end(last_text,first_name);
+            let mut last_start = 0;
+            let mut last_end = 0;
+            if let Some(start) = last_start_option{
+                last_start = first_start+start;
+                last_end = last_start+1;
             }
+
+            let position = NodePosition::new("#set",last_start,last_end);
+            log::debug!("set----start:{:?}   end:{:?}", node_position,position);
+            let token_position= TokenPosition::build(&node_position,&position);
+            token_position_list.push(token_position);
+
+
+            // let set_end = template[first_end..].find(')').map(|pos| first_end + pos);
+            // if let Some(end_pos) = set_end {
+            //     let position = NodePosition::new("#set",first_end+1,end_pos+1);
+            //     log::debug!("start:{:?}   end:{:?}", node_position,position);
+            //     let token_position= TokenPosition::build(&node_position,&position);
+            //     token_position_list.push(token_position);
+            // }
         }else {
             stack.push(node_position);
         }
@@ -328,6 +340,7 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
             tokens.push(text);
 
         }else if first_name == "#set" {
+
             let set_text = &template[first_end + 1..last_end - 1];
             if !set_text.is_empty() {
                 if let Some((key, value)) = set_text.split_once('=') {
@@ -374,22 +387,19 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
 
             tokens.push(Tokenizer::new_if(if_tokens));
         }else if first_name=="#foreach" {
-
             let foreach_all_text = &template[first_start..last_end];
-            let foreach_expression_end = foreach_all_text.find(")");
-            let mut foreach_child_text = "";
-            let mut foreach_child_text_start = 0;
 
-            if let Some(child_start) = foreach_expression_end {
-
-                foreach_child_text_start = first_start+child_start+1;
-                log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
-                foreach_child_text = &template[foreach_child_text_start..last_start];
-
-                log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
+            let mut expression_start = 0;
+            let mut expression_end = 0;
+            let bracket_range = find_tag_bracket_range(foreach_all_text,first_name);
+            if let Some((start,end)) = bracket_range {
+                expression_start = first_start+start;
+                expression_end   = first_start+end;
             }else{
-                //TODO error
+                return Err(format!("Error: No valid end found for the expression following the tag '{}' in the input string.",first_name))
             }
+            let foreach_expression = &template[expression_start + 1..expression_end];
+            let foreach_child_text = &template[expression_end + 1..last_start];
 
 
             let mut token_position_list = Vec::new();
@@ -397,49 +407,45 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
             if let Ok(token_position) = token_position_result {
                 token_position_list.extend(token_position);
             }
-
             let children_tokens_result = position_to_tokenizer(&foreach_child_text, &mut token_position_list);
             if children_tokens_result.is_err() {
                 return children_tokens_result;
             }
             let children_tokens = children_tokens_result.unwrap();
 
-            if let Some(captures) = FOREACH_REGEX.captures(foreach_all_text) {
-                if let Some(condition) = captures.get(1) {
-                    let condition_str = condition.as_str();
-                    // 按照 "in" 分割
-                    let parts: Vec<&str> = condition_str.split(" in ").map(str::trim).collect();
 
-                    if parts.len() == 2 {
-                        let variable = parts[0];
-                        let collection = parts[1];
-                        // println!("Variable: {}", variable);
-                        // println!("Collection: {}", collection);
+            // 按照 "in" 分割
+            let parts: Vec<&str> = foreach_expression.split(" in ").map(str::trim).collect();
+            if parts.len() == 2 {
+                let variable = parts[0];
+                let collection = parts[1];
+                // println!("Variable: {}", variable);
+                // println!("Collection: {}", collection);
 
-                        let foreach_text = &template[first_start..last_start];
-                        let foreach_expression_end = foreach_text.find(")");
-                        let mut foreach_child_text = "";
-                        let mut foreach_child_text_start = 0;
+                let foreach_text = &template[first_start..last_start];
+                let foreach_expression_end = foreach_text.find(")");
+                let mut foreach_child_text = "";
+                let mut foreach_child_text_start = 0;
 
-                        if let Some(child_start) = foreach_expression_end {
-                            foreach_child_text_start = first_end + child_start + 1;
-                            // log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
-                            foreach_child_text = &template[foreach_child_text_start..last_start];
+                if let Some(child_start) = foreach_expression_end {
+                    foreach_child_text_start = first_end + child_start + 1;
+                    // log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
+                    foreach_child_text = &template[foreach_child_text_start..last_start];
 
-                            // log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
-                        } else {
-                            return Err("foreach Syntax error".to_string())
-                        }
-
-
-                        let foreach_token = Tokenizer::new_foreach(variable, collection, children_tokens);
-
-                        tokens.push(foreach_token);
-                    } else {
-                        return Err("foreach Syntax error".to_string())
-                    }
+                    // log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
+                } else {
+                    return Err("foreach Syntax error".to_string())
                 }
+
+
+                let foreach_token = Tokenizer::new_foreach(variable, collection, children_tokens);
+                tokens.push(foreach_token);
+
+            } else {
+                return Err("foreach Syntax error".to_string())
             }
+
+
         }
         position_list_temp.push(position.clone());
     }
@@ -481,52 +487,38 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
 
     }else if first_name=="#if" || first_name=="#elseif" {
 
-        let if_child_start = child_text.find(")");
 
-        let mut if_child_text = "";
-        let mut child_start = 0;
-        if let Some(if_child_start) = if_child_start {
-            child_start = first_end+if_child_start+1;
-            log::debug!("start:{} end:{}",(first_end+if_child_start+1),last_start);
-            if_child_text = &template[first_end+if_child_start+1..last_start];
+        let text = &template[first_start..last_start];
+        let mut expression_start = 0;
+        let mut expression_end = 0;
+        let bracket_range = find_tag_bracket_range(text,first_name);
+        if let Some((start,end)) = bracket_range {
+            expression_start = first_start+start;
+            expression_end   = first_start+end;
         }else{
-            //TODO error
+            return Err(format!("Error: No valid end found for the expression following the tag '{}' in the input string.",first_name))
         }
+
+        log::debug!("text:{:?} expression_start:{} expression_end:{}",text,expression_start,expression_end);
+        let condition = &template[expression_start+1..expression_end].trim();
+        let child_text = &template[expression_end+1..last_start];
 
 
         let mut token_position_list = Vec::new();
-        let token_position_result = parse_position(&if_child_text,0);
+        let token_position_result = parse_position(&child_text,0);
         if let Ok(token_position) = token_position_result {
             token_position_list.extend(token_position);
         }
 
-        let children_tokens_result = position_to_tokenizer(if_child_text, &mut token_position_list);
+        let children_tokens_result = position_to_tokenizer(child_text, &mut token_position_list);
         if children_tokens_result.is_err() {
             return Err(children_tokens_result.unwrap_err());
         }
         let children_tokens = children_tokens_result.unwrap();
         log::debug!("children_tokens:{:#?}",children_tokens);
 
-        let text = &template[first_start..last_start];
-
-
-        if first_name == "#if" {
-            if let Some(captures) = IF_REGEX.captures(text) {
-                if let Some(condition) = captures.get(1) {
-                    // log::debug!("-------------condition:{:?}",condition.as_str());
-                    let if_token = IfBranch::new(condition.as_str().to_string(),children_tokens);
-                    return Ok(if_token);
-                }
-            }
-        }else if first_name == "#elseif" {
-            if let Some(captures) = ELSE_IF_REGEX.captures(text) {
-                if let Some(condition) = captures.get(1) {
-                    // log::debug!("-------------condition:{:?}",condition.as_str());
-                    let if_token = IfBranch::new(condition.as_str().to_string(),children_tokens);
-                    return Ok(if_token);
-                }
-            }
-        }
+        let if_token = IfBranch::new(condition.to_string(),children_tokens);
+        return Ok(if_token);
     }
 
     Err("Unknown token".to_string())
@@ -556,7 +548,8 @@ pub fn parse_token(token:&Tokenizer,content: &mut HashMap<String, Value>) -> Opt
             text_parse::text_parse(&token, content)
         }
         Tokenizer::Set { .. } => {
-            set_parse::set_parse(token,content)
+            set_parse::set_parse(token,content);
+            None
         }
         Tokenizer::If { ..} => {
             if_parse::if_parse(token,content)
@@ -567,11 +560,56 @@ pub fn parse_token(token:&Tokenizer,content: &mut HashMap<String, Value>) -> Opt
     }
 }
 
+pub fn find_tag_bracket_range(input: &str, tag: &str) -> Option<(usize, usize)> {
+    let start_index = match input.find(tag) {
+        Some(index) => index,
+        None => return None,
+    };
+
+    let mut stack = 0;
+    let mut first_open_paren_index = None;
+
+    for (i, c) in input[start_index..].char_indices() {
+        match c {
+            '(' => {
+                if first_open_paren_index.is_none() {
+                    first_open_paren_index = Some(start_index + i);
+                }
+                stack += 1;
+            }
+            ')' => {
+                stack -= 1;
+                if stack == 0 {
+                    return Some((first_open_paren_index?, start_index + i));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
 
 
 
-
-
-
+fn find_tag_end(input: &str, tag: &str) -> Option<usize> {
+    let start_index = match input.find(tag) {
+        Some(index) => index,
+        None => return None,
+    };
+    let mut stack = 0;
+    for (i, c) in input[start_index..].char_indices() {
+        match c {
+            '(' => stack += 1,
+            ')' => {
+                stack -= 1;
+                if stack == 0 {
+                    return Some(start_index + i);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
 
 
