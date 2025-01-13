@@ -1,0 +1,6 @@
+第一行
+#set($fruits = ["apple", "banana", "cherry"])
+第二行
+#foreach($fruit in $fruits)
+    #set($index = ${foreach.index})Index: $index, Fruit: $fruit
+#end

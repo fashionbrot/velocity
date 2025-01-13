@@ -1,0 +1,7 @@
+#if($age>17)
+    $age>17
+#elseif($age<17)
+    $age<17
+#else
+    default else
+#end

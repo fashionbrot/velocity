@@ -1,10 +1,8 @@
-use std::collections::HashMap;
-use std::f32::consts::E;
-use std::ops::Add;
-use serde::Serialize;
-use serde_json::{Value};
-use serde_json::Value::String as JsonString;
 use crate::token::token_parse;
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::ops::Add;
 
 pub mod expression;
 
@@ -13,55 +11,45 @@ pub mod token;
 pub mod parse;
 
 
+pub fn render_default(template:&str)-> Result<String, String> {
+    let mut content:HashMap<String, Value> = HashMap::new();
+    render(template, &mut content)
+}
 
-pub fn parse_template(template: &str,content: &mut HashMap<String, Value>) -> Result<String, String> {
+pub fn render(template: &str, content: &mut HashMap<String, Value>) -> Result<String, String> {
     let tokens_result = token_parse::get_tokens(template);
     match tokens_result {
         Ok(tokens) => {
-            let output = token_parse::parse_tokens(&tokens,content);
+            let output = token_parse::parse_tokens(&tokens, content);
             if let Some(output) = output {
                 return Ok(output);
             }
             Ok(String::new())
         }
-        Err(error) => {
-            Err(error.to_string())
-        }
+        Err(error) => Err(error.to_string()),
     }
 }
 
-pub fn parse_path_template(path:&str,content:&mut HashMap<String, Value>) -> Result<String, String>  {
+pub fn render_from_path(path: &str, content: &mut HashMap<String, Value>, ) -> Result<String, String> {
     match read_file(path) {
-        Ok(template) => {
-
-            match parse_template(template.as_str(),content) {
-                Ok(content) => Ok(content),
-                Err(error) => Err(error)
-            }
-
+        Ok(template) => match render(template.as_str(), content) {
+            Ok(content) => Ok(content),
+            Err(error) => Err(error),
         },
-        Err(error) => {
-            Err(error)
-        }
+        Err(error) => Err(error),
     }
 }
 
-
-pub fn parse_template_object<T: Serialize>(template:&str,obj: &T)-> Result<String, String> {
+pub fn render_from_object<T: Serialize>(template: &str, obj: &T) -> Result<String, String> {
     let mut context_result = object_to_hashmap(obj);
     match context_result {
-        Ok(mut context_map) => {
-
-            match  parse_template(template,&mut context_map) {
-                Ok(content) => Ok(content),
-                Err(error) => Err(error)
-            }
-
+        Ok(mut context_map) => match render(template, &mut context_map) {
+            Ok(content) => Ok(content),
+            Err(error) => Err(error),
         },
-        Err(error) => Err(error)
+        Err(error) => Err(error),
     }
 }
-
 
 pub fn object_to_hashmap<T: Serialize>(obj: &T) -> Result<HashMap<String, Value>, String> {
     match serde_json::to_value(obj) {
@@ -71,11 +59,7 @@ pub fn object_to_hashmap<T: Serialize>(obj: &T) -> Result<HashMap<String, Value>
     }
 }
 
-
-
 pub fn read_file(file_path: &str) -> Result<String, String> {
     std::fs::read_to_string(file_path)
         .map_err(|err| format!("Failed to read file '{}': {}", file_path, err))
 }
-
-

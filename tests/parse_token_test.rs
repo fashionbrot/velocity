@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Number, Value};
-use velocity::{parse_template, parse_template_object, read_file};
+use velocity::{ read_file, render, render_from_object};
 use velocity::token::token_parse;
 use velocity::token::token_parse::Tokenizer;
 use crate::log_config;
@@ -95,7 +95,7 @@ pub fn parse(){
     context.insert("rust".to_string(), Value::String("rust 2025".to_string()));
     context.insert("list".to_string(),list);
 
-    if let Ok(output) = parse_template(&template,&mut context){
+    if let Ok(output) = render(&template,&mut context){
         println!("------------------------------------\n{}", output);
         println!("----------------------------------------------------------------------")
     }
@@ -131,7 +131,7 @@ pub fn parse_(){
 
     println!("template: {:?}", template);
     for x in 0..1  {
-        let output_result = parse_template_object(&template,&user);
+        let output_result = render_from_object(&template,&user);
         if let Ok(output) = output_result{
             println!("------------------------------------\n{}", output);
             println!("----------------------------------------------------------------------")

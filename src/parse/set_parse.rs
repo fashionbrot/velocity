@@ -18,24 +18,27 @@ fn contains_meval(input: &str) -> bool {
     MEVAL_REGEX.is_match(input)
 }
 
-pub fn set_parse(token :&Tokenizer, content: &mut HashMap<String, Value>) {
+pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
 
     if let Tokenizer::Set { key,value } = token {
         // println!("key:{} vlaue:{}",key,value);
         let k = variable_parse::extract_variable(&key);
-        let mut v = variable_parse::normalize_variable_syntax(value.as_str(),&content);
+        let mut v = variable_parse::normalize_variable_syntax(value.as_str(),context);
+
+        log::debug!("set key:{:?} value:{:?}",k,v);
+
         if let Some(key) = k{
 
             if contains_comparators(v.as_str()) {
                 if let Ok((new_value)) = expression_evaluator::evaluate_expression(v.as_str()){
-                    update_content(content, &key, Value::Bool(true));
+                    update_content(context, &key, Value::Bool(true));
                     return;
                 }
             }
 
             if contains_meval(v.as_str()) {
                 if let Ok(new_value) = meval::eval_str(v.as_str()) {
-                    update_content(content, &key, Value::Number(Number::from_f64(new_value).unwrap()));
+                    update_content(context, &key, Value::Number(Number::from_f64(new_value).unwrap()));
                     return;
                 }
 
@@ -59,7 +62,7 @@ pub fn set_parse(token :&Tokenizer, content: &mut HashMap<String, Value>) {
                 Value::String(v)
             };
 
-            update_content(content, &key, new_value);
+            update_content(context, &key, new_value);
 
         }
 

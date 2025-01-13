@@ -1,0 +1,22 @@
+#set($name = "Alice")
+#set($age = 25)
+#set($isMember = true)
+#set($cart = ["Book", "Pen", "Notebook"])
+#set($profile = {"username": "alice123", "email": "alice@example.com"})
+#set($price=10)
+#set($discount = $price * 0.1)
+#set($isEligible = $age >= 18 && $isMember)
+
+name = ${name}
+age = ${age}
+isMember = ${isMember}
+cart = ${cart}
+profile = ${profile}
+discount = ${discount}
+isEligible = ${isEligible}
+
+#foreach($item in $profile)
+    profile item = ${item}
+#end
+
+

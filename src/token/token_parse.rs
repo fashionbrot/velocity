@@ -304,8 +304,8 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
                 position_list.push(TokenPosition::new_text(read_index,first_start));
             }
             position_list.push(position.clone());
+            read_index = last_end;
         }
-        read_index = last_end;
     }
 
     if read_index<read_end{
@@ -315,6 +315,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
         position_list.push(text_position);
     }
 
+    log::debug!("position_list: {:#?}", position_list);
     Ok(position_list)
 }
 
@@ -336,15 +337,16 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
         if first_name == "#text" {
 
             log::debug!("text--first_start:{:?}   last_end:{:?} first_name:{:?} last_name:{:?}",first_start,last_start,first_name,last_name);
-            let text = Tokenizer::new_text(&template[first_start..last_end]);
-            tokens.push(text);
+            let text =&template[first_start..last_end];
+            let text_token = Tokenizer::new_text(text);
+            tokens.push(text_token);
 
         }else if first_name == "#set" {
 
             let set_text = &template[first_end + 1..last_end - 1];
             if !set_text.is_empty() {
                 if let Some((key, value)) = set_text.split_once('=') {
-                    let text = Tokenizer::new_set(key, value);
+                    let text = Tokenizer::new_set(key.trim(), value.trim());
                     tokens.push(text);
                 } else {
                     //TODO
@@ -449,6 +451,8 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
         }
         position_list_temp.push(position.clone());
     }
+
+    log::debug!("tokens--------------------------\n{:#?}",tokens);
 
     Ok(tokens)
 }
