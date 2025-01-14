@@ -143,6 +143,11 @@ lazy_static! {
         tags.push("#foreach");
         tags.push("#set");
         tags.push("#end");
+        tags.push("##");
+        tags.push("<!--");
+        tags.push("-->");
+        tags.push("#*");
+        tags.push("*#");
         tags
     };
 
@@ -161,6 +166,10 @@ lazy_static! {
     // 创建一个静态的 Mutex 包裹的 HashMap
     static ref TOKEN_CACHE: Arc<Mutex<HashMap<String, Vec<Tokenizer>>>> = Arc::new(Mutex::new(HashMap::new()));
 
+    // 块注释 #* ... *#
+    static ref BLOCK_COMMENT_RE: Regex = Regex::new(r"#\*.*?\*#").unwrap();
+    // 匹配行尾注释 ## 开头到行尾（包括换行符）
+    static ref LINE_COMMENT_RE: Regex = Regex::new(r"(?m)^##.*\n?").unwrap(); // 匹配整行 ## 开头的注释
 
 }
 
@@ -178,6 +187,15 @@ fn get(key: &str) -> Option<Vec<Tokenizer>> {
     map.get(key).cloned()
 }
 
+fn remove_velocity_comments(template: &str) -> String {
+    // 移除块注释（#* ... *#）
+    let template = BLOCK_COMMENT_RE.replace_all(template, "");
+
+    // 移除整行以 ## 开头的注释，包括换行符
+    let template = LINE_COMMENT_RE.replace_all(&template, "");
+    // 返回处理后的字符串
+    template.to_string()
+}
 
 pub fn get_tokens(template:&str) ->  Result<Vec<Tokenizer>,String>{
 
@@ -193,9 +211,13 @@ pub fn get_tokens(template:&str) ->  Result<Vec<Tokenizer>,String>{
         return Ok(token_list);
     }
 
+
+    let template = remove_velocity_comments(&template);
+
+
     match parse_position(&template,0) {
         Ok(token_position_list)=>{
-            match  position_to_tokenizer(template,&token_position_list) {
+            match  position_to_tokenizer(&template,&token_position_list) {
                 Ok(tokens)=>{
                     set(key, tokens.clone());
                     Ok(tokens)
@@ -217,7 +239,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
 
     // 生成开始结束标签
     let mut stack: Vec<NodePosition> = Vec::new(); // 用来存储开始标签的索引
-    let mut captures: Vec<(usize, &str)> = TAGS_PATTERN.find_iter(template)
+    let mut captures: Vec<(usize, &str)> = TAGS_PATTERN.find_iter(&template)
         .map(|capture| (capture.start(), capture.as_str()))
         .collect();
 
@@ -254,19 +276,33 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
                 token_position_list.push(token_position);
                 stack.push(node_position);
             }
+        }else if first_name == "-->" {
+            if let Some(position) = stack.pop() {
+                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                let token_position= TokenPosition::build(&position,&node_position);
+                token_position_list.push(token_position);
+                stack.push(node_position);
+            }
+        }else if first_name == "*#" {
+            if let Some(position) = stack.pop() {
+                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                let token_position= TokenPosition::build(&position,&node_position);
+                token_position_list.push(token_position);
+                stack.push(node_position);
+            }
         }else if first_name =="#set" {
             let last_text = &template[first_start..];
-            let last_start_option = find_tag_end(last_text,first_name);
+            let last_start_option = find_tag_end(last_text, first_name);
             let mut last_start = 0;
             let mut last_end = 0;
-            if let Some(start) = last_start_option{
-                last_start = first_start+start;
-                last_end = last_start+1;
+            if let Some(start) = last_start_option {
+                last_start = first_start + start;
+                last_end = last_start + 1;
             }
 
-            let position = NodePosition::new("#set",last_start,last_end);
+            let position = NodePosition::new("#set", last_start, last_end);
             log::debug!("set----start:{:?}   end:{:?}", node_position,position);
-            let token_position= TokenPosition::build(&node_position,&position);
+            let token_position = TokenPosition::build(&node_position, &position);
             token_position_list.push(token_position);
 
 
@@ -277,6 +313,26 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
             //     let token_position= TokenPosition::build(&node_position,&position);
             //     token_position_list.push(token_position);
             // }
+        }else if first_name =="##" {
+            let last_text = &template[first_start..];
+            log::debug!("start:{:?}   last_text:{:?}",node_position,last_text);
+            let mut last_start = first_start+find_char_index(last_text,"\r\n").unwrap();
+            let  last_end = last_start+2 ;
+
+            let position = NodePosition::new("##", last_start, last_end);
+            log::debug!("set----start:{:?}   end:{:?}", node_position,position);
+            let token_position = TokenPosition::build(&node_position, &position);
+            token_position_list.push(token_position);
+        //
+        // }else if first_name =="#*" {
+        //     let last_text = &template[first_start..];
+        //     let mut last_start = find_char_index(last_text,r#"*#"#).unwrap();
+        //     let  last_end = last_start + 2;
+        //
+        //     let position = NodePosition::new("*#", last_start, last_end);
+        //     log::debug!("set----start:{:?}   end:{:?}", node_position,position);
+        //     let token_position = TokenPosition::build(&node_position, &position);
+        //     token_position_list.push(token_position);
         }else {
             stack.push(node_position);
         }
@@ -334,7 +390,7 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
 
         log::debug!(" first_name:{} last_name:{}  first_start:{} first_end:{} last_start:{} last_end:{}",first_name,last_name,first_start,first_end,last_start,last_end);
 
-        if first_name == "#text" {
+        if first_name == "#text" || first_name =="<!--" {
 
             log::debug!("text--first_start:{:?}   last_end:{:?} first_name:{:?} last_name:{:?}",first_start,last_start,first_name,last_name);
             let text =&template[first_start..last_end];
@@ -616,4 +672,14 @@ fn find_tag_end(input: &str, tag: &str) -> Option<usize> {
     None
 }
 
+fn find_char_index(input: &str, target: &str) -> Option<usize> {
+    if target.is_empty() {
+        return None;
+    }
+    let re = Regex::new(format!(r"{}",target).as_str()).unwrap();
+    if let Some(capture) = re.find(input) {
+        return Some(capture.start());
+    }
+    None
+}
 

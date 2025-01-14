@@ -10,3 +10,5 @@ pub mod foreach;
 pub mod if_test;
 
 pub mod set;
+
+pub mod comment;

@@ -1,6 +1,16 @@
-第一行
-#set($fruits = ["apple", "banana", "cherry"])
-第二行
-#foreach($fruit in $fruits)
-    #set($index = ${foreach.index})Index: $index, Fruit: $fruit
+array:
+#set($array = ["apple", "banana", "cherry"])
+#foreach($arrayItem in $array)
+    #set($index = ${foreach.index})
+    index:${index} count:${foreach.count} first:${foreach.first} last:${foreach.last} hasNext:${foreach.hasNext} item:${arrayItem}
 #end
+#*
+
+
+map:
+#set($profile = [{"username":"张三","age":18},{"username":"李四","age":19}])
+profile.size = ${profile.size}
+#foreach($item in $profile)
+    index:${foreach.index} count:${foreach.count} first:${foreach.first} last:${foreach.last} hasNext:${foreach.hasNext} username:${item.username} age:${item.age}
+#end
+${profile.size}*#

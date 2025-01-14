@@ -167,64 +167,6 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
 }
 
 
-// fn process_array(
-//     list: &[Value],
-//     element_key: String,
-//     children: &Option<Vec<Tokenizer>>,
-//     context: &mut HashMap<String, Value>,
-//     output: &mut String,
-// ) {
-//     for (index, item) in list.iter().enumerate() {
-//         update_content(context, element_key.to_string(), item.clone());
-//         update_content(context, "foreach.index".to_string(), Value::Number(Number::from(index as i64)));
-//
-//         if let Some(child_tokens) = children {
-//             render_children(child_tokens, context, output);
-//         }
-//     }
-// }
-
-// fn process_object(
-//     map: &serde_json::Map<String, Value>,
-//     element_key: String,
-//     children: &Option<Vec<Tokenizer>>,
-//     context: &mut HashMap<String, Value>,
-//     output: &mut String,
-// ) {
-//     for (key, value) in map {
-//         update_content(context, element_key.to_string(), Value::String(key.clone()));
-//         update_content(context, "foreach.value".to_string(), value.clone());
-//
-//         if let Some(child_tokens) = children {
-//             render_children(child_tokens, context, output);
-//         }
-//     }
-// }
-//
-//
-
-// fn render_children(
-//     children: &[Tokenizer],
-//     context: &mut HashMap<String, Value>,
-//     output: &mut String,
-// ) {
-//     let mut child_output = String::new();
-//
-//     for child_token in children {
-//         log::debug!("Processing child token: {:?}", child_token);
-//         if let Some(text) = parse_token(child_token, context) {
-//             let normalized_text = variable_parse::normalize_variable_syntax(&text, context);
-//             child_output.push_str(&normalized_text);
-//         }
-//     }
-//
-//     if let Some(parsed_text) = text_parse::parse_string(&child_output) {
-//         output.push_str(&parsed_text);
-//     } else {
-//         output.push_str(&child_output);
-//     }
-// }
-
 
 fn update_content(content: &mut HashMap<String, Value>, key:&str, new_value: Value) {
     if let Some(value) = content.get_mut(key) {

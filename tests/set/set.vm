@@ -6,7 +6,6 @@
 #set($price=10)
 #set($discount = $price * 0.1)
 #set($isEligible = $age >= 18 && $isMember)
-
 name = ${name}
 age = ${age}
 isMember = ${isMember}
@@ -14,12 +13,4 @@ cart = ${cart}
 profile = ${profile}
 discount = ${discount}
 isEligible = ${isEligible}
-
-profile.size = ${profile.size}
-#foreach($item in $profile)
-    index:${foreach.index} count:${foreach.count} first:${foreach.first} last:${foreach.last}
-#end
-
-
-${profile.size}
-
+profile = ${profile}
