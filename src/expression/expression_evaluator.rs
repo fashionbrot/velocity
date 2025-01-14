@@ -9,27 +9,31 @@ enum Token {
     Operator(String),
     Parenthesis(char),
     Boolean(bool),
+    String(String)
 }
 
 lazy_static! {
+    // static ref EXPRESSION_TOKEN_REGEX: Regex = Regex::new(
+    //     r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}"
+    // ).unwrap();
     static ref EXPRESSION_TOKEN_REGEX: Regex = Regex::new(
-        r"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\$\{[^\}]+\}"
+        r#"(\d+(\.\d+)?)|([<>=!]+|&&|\|\|)|([()])|(\btrue\b|\bfalse\b)|\"[^\"]*\"|\$\{[^\}]+\}"#
     ).unwrap();
 }
 
 pub fn evaluate_expression(expression: &str) -> Result<bool, String> {
-    // println!("Evaluating expression: {}", expression);
+    log::debug!("Evaluating expression: {}", expression);
     let tokens = tokenize(expression);
     if tokens.is_err() {
         return Err(tokens.unwrap_err());
     }
 
-    // println!("tokens: {:#?}", tokens);
+    log::debug!("tokens: {:#?}", tokens);
     let postfix = infix_to_postfix(tokens.unwrap());
     if postfix.is_err() {
         return Err(postfix.unwrap_err());
     }
-    // println!("postfix: {:#?}", postfix);
+    log::debug!("postfix: {:#?}", postfix);
     evaluate_postfix(postfix.unwrap())
 }
 fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
@@ -58,7 +62,7 @@ fn tokenize(expression: &str) -> Result<Vec<Token>, String> {
             tokens.push(boolean);
         } else if let Some(var) = cap.get(6) {
             // 处理 `${}` 中的变量
-            tokens.push(Token::Boolean(false));
+            tokens.push(Token::String(var.as_str().to_string()));  // 处理字符串
         }
     }
 
@@ -98,6 +102,9 @@ fn infix_to_postfix(tokens: Vec<Token>) -> Result<Vec<Token>, String> {
                 output.push(Token::Boolean(b));  // 处理布尔值
             }
             Token::Parenthesis(_) => {}
+            Token::String(s) => {
+                output.push(Token::String(s.to_string()));
+            }
         }
     }
 
@@ -122,6 +129,9 @@ fn evaluate_postfix(tokens: Vec<Token>) -> Result<bool, String> {
 
     for token in tokens {
         match token {
+            Token::String(s) => {
+                log::debug!("{}", s);
+            },
             Token::Number(n) => stack.push(n),
             Token::Boolean(b) => {
                 // 将布尔值转换为数字：true -> 1.0，false -> 0.0
@@ -161,10 +171,25 @@ fn evaluate_postfix(tokens: Vec<Token>) -> Result<bool, String> {
 #[cfg(test)]
 mod tests {
     use crate::expression::expression_evaluator::evaluate_expression;
+    use std::io::Write;
 
     #[test]
     fn main() {
-        let expression = "(1<2) && (2>1)) && true && true";
+        std::env::set_var("RUST_LOG", "debug");
+        env_logger::Builder::from_default_env()
+            .format(|buf, record| {
+                writeln!(
+                    buf,
+                    "[{} - {}] - {} ",
+                    record.target(),
+                    record.line().unwrap_or(0),
+                    record.args()
+                )
+            })
+            .init();
+
+        // let expression = "1==1";
+        let expression= "你好==你好";
         match evaluate_expression(expression) {
             Ok(result) => println!("Result: {}", result),  // true
             Err(e) => println!("Error: {}", e),

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::format;
+use serde::Deserializer;
 use serde_json::{json, Map, Number, Value};
 use serde_json::Value::Object;
 use crate::parse::{text_parse, variable_parse};
@@ -90,7 +91,7 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                 }
 
             }else if let Value::Array(list) = value{
-                let items = list.clone();
+                let items:Vec<Value> = list.clone();
                 let size = list.len();
 
                 log::debug!("foreach context:{:?}",context);
@@ -103,6 +104,8 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
 
                     log::debug!("foreach item:{:?}",&item);
                     log::debug!("foreach value is map:{:?}",item.is_object());
+
+
 
                     if index==0 {
                         first = true;
@@ -120,9 +123,13 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                         for (key,value) in map {
                             update_content(context, format!("{}.{}", &element_key, &key).as_str(), value.clone());
                         }
+                    }else if item.is_string() {
+                        update_content(context, &element_key,Value::String(item.to_string()));
+                    }else{
+                        update_content(context, &element_key, item);
                     }
 
-                    update_content(context, &element_key, item);
+
                     update_content(context, "foreach.count", Value::Number(Number::from(count)));
                     update_content(context, "foreach.first", Value::Bool(first));
                     update_content(context, "foreach.hasNext", Value::Bool(has_next));

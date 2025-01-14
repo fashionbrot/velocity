@@ -1,8 +1,9 @@
 array:
 #set($array = ["apple", "banana", "cherry"])
 #foreach($arrayItem in $array)
-    #set($index = ${foreach.index})
-    index:${index} count:${foreach.count} first:${foreach.first} last:${foreach.last} hasNext:${foreach.hasNext} item:${arrayItem}
+    #if(${arrayItem}=="apple")
+        #set($index = ${foreach.index})index:${index} count:${foreach.count} first:${foreach.first} last:${foreach.last} hasNext:${foreach.hasNext} item:${arrayItem}
+    #end
 #end
 #*
 

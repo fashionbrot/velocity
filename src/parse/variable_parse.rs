@@ -22,7 +22,7 @@ pub fn normalize_variable_syntax(input: &str, context: &mut HashMap<String, Valu
         // 查找对应的值
         match context.get(&key) {
             Some(value) => match value {
-                Value::String(s) => s.clone(),
+                Value::String(s) => s.to_string(),
                 Value::Number(n) => n.to_string(),
                 Value::Bool(b) => b.to_string(),
                 _ => format!("{}", value),
