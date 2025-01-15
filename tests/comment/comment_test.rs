@@ -1,7 +1,7 @@
 use crate::log_config;
 use lazy_static::lazy_static;
 use regex::Regex;
-use velocity::{read_file, render_default};
+use velocity::{read_file, render_default, render_default_path};
 
 #[test]
 pub fn marker_test() {
@@ -68,12 +68,7 @@ pub fn test2() {
     } else {
         String::new() // 返回一个空字符串作为默认值
     };
-
     println!("template: {}", template);
-    // let cleaned_template = remove_velocity_comments(&template);
-    // println!("---------------------template:{}", cleaned_template);
-    //
-    // println!("---------------------------------------{:?}", &template[3..25]);
 
     let result = render_default(template.as_str());
     if let Ok(content) = result {
@@ -81,6 +76,16 @@ pub fn test2() {
         println!("----------------------------------------------------------------")
     }
 
+}
+
+#[test]
+pub fn test22() {
+
+    let result = render_default_path("tests/comment/comment.vm");
+    if let Ok(content) = result {
+        println!("----------------------------------------------------------------\n{}", content);
+        println!("----------------------------------------------------------------")
+    }
 }
 
 lazy_static! {

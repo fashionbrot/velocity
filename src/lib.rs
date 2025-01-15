@@ -11,6 +11,17 @@ pub mod token;
 pub mod parse;
 
 
+pub fn render_default_path(path:&str)-> Result<String, String> {
+    let mut content:HashMap<String, Value> = HashMap::new();
+    match read_file(path) {
+        Ok(template) => match render(template.as_str(),&mut content) {
+            Ok(content) => Ok(content),
+            Err(error) => Err(error),
+        },
+        Err(error) => Err(error),
+    }
+}
+
 pub fn render_default(template:&str)-> Result<String, String> {
     let mut content:HashMap<String, Value> = HashMap::new();
     render(template, &mut content)
