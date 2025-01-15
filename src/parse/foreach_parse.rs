@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::fmt::format;
 use serde::Deserializer;
-use serde_json::{json, Map, Number, Value};
-use serde_json::Value::Object;
-use crate::parse::{text_parse, variable_parse};
+use serde_json::{Map, Number, Value};
+use crate::parse::{text_parse, update_content, variable_parse};
 use crate::token::token_parse::{parse_token, Tokenizer};
 
 pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> Option<std::string::String> {
@@ -88,6 +87,7 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                         output.push_str(&child_output);
                     }
                     index += 1;
+                    count += 1;
                 }
 
             }else if let Value::Array(list) = value{
@@ -104,7 +104,6 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
 
                     log::debug!("foreach item:{:?}",&item);
                     log::debug!("foreach value is map:{:?}",item.is_object());
-
 
 
                     if index==0 {
@@ -174,11 +173,3 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
 }
 
 
-
-fn update_content(content: &mut HashMap<String, Value>, key:&str, new_value: Value) {
-    if let Some(value) = content.get_mut(key) {
-        *value = new_value;
-    } else {
-        content.insert(key.to_string(), new_value);
-    }
-}

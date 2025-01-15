@@ -11,7 +11,7 @@ use crate::log_config;
 fn parse_position_test() {
     log_config::print_debug_log();
 
-    let template_path = "tests/if/if_1.vm";
+    let template_path = "tests/entity.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
     } else {
@@ -40,7 +40,7 @@ fn parse_position_test() {
 #[test]
 fn parse_position_token_test() {
     log_config::print_debug_log();
-    let template_path = "tests/if/if_1.vm";
+    let template_path = "tests/entity.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
     } else {
@@ -60,7 +60,7 @@ fn parse_position_token_test() {
 pub fn prase_template_token(){
     log_config::print_debug_log();
 
-    let template_path = "tests/if/if_1.vm";
+    let template_path = "tests/entity.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
     } else {
@@ -75,7 +75,7 @@ pub fn prase_template_token(){
 pub fn parse(){
     log_config::print_debug_log();
 
-    let template_path = "tests/if/if_1.vm";
+    let template_path = "tests/entity.vm";
     let template = if let Ok(content) = read_file(template_path) {
         content // 直接将 String 赋值给 template
     } else {

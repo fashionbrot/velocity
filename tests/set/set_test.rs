@@ -14,7 +14,7 @@ pub fn set_test(){
 
 
     println!("template: {:?}", template);
-    for x in 0..2  {
+    for x in 0..1  {
         let output_result = render_default(&template);
         if let Ok(output) = output_result{
             println!("------------------------------------\n{}", output);
