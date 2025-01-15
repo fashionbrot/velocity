@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::f32::consts::E;
 use std::sync::{Arc, Mutex};
 use lazy_static::lazy_static;
 use log::log;
@@ -157,7 +156,7 @@ lazy_static! {
             .map(|tag| escape(*tag)) // 转义标签
             .collect::<Vec<String>>()
             .join("|"); // 使用 | 连接标签
-        println!("pattern-------------{:?}" ,pattern);
+        // println!("pattern-------------{:?}" ,pattern);
         Regex::new(&format!(r"({})", pattern)).unwrap() // 返回正则表达式
     };
 
@@ -253,7 +252,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
 
         if first_name == "#end" {
             if let Some(position) = stack.pop() {
-                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                // log::debug!("start:{:?}   end:{:?}",position, node_position);
                 let token_position= TokenPosition::build(&position,&node_position);
                 token_position_list.push(token_position);
             } else {
@@ -262,28 +261,28 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
             }
         }else if first_name == "#else" {
             if let Some(position) = stack.pop() {
-                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                // log::debug!("start:{:?}   end:{:?}",position, node_position);
                 let token_position= TokenPosition::build(&position,&node_position);
                 token_position_list.push(token_position);
                 stack.push(node_position);
             }
         }else if first_name == "#elseif" {
             if let Some(position) = stack.pop() {
-                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                // log::debug!("start:{:?}   end:{:?}",position, node_position);
                 let token_position= TokenPosition::build(&position,&node_position);
                 token_position_list.push(token_position);
                 stack.push(node_position);
             }
         }else if first_name == "-->" {
             if let Some(position) = stack.pop() {
-                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                // log::debug!("start:{:?}   end:{:?}",position, node_position);
                 let token_position= TokenPosition::build(&position,&node_position);
                 token_position_list.push(token_position);
                 stack.push(node_position);
             }
         }else if first_name == "*#" {
             if let Some(position) = stack.pop() {
-                log::debug!("start:{:?}   end:{:?}",position, node_position);
+                // log::debug!("start:{:?}   end:{:?}",position, node_position);
                 let token_position= TokenPosition::build(&position,&node_position);
                 token_position_list.push(token_position);
                 stack.push(node_position);
@@ -299,7 +298,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
             }
 
             let position = NodePosition::new("#set", last_start, last_end);
-            log::debug!("set----start:{:?}   end:{:?}", node_position,position);
+            // log::debug!("set----start:{:?}   end:{:?}", node_position,position);
             let token_position = TokenPosition::build(&node_position, &position);
             token_position_list.push(token_position);
 
@@ -313,12 +312,12 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
             // }
         }else if first_name =="##" {
             let last_text = &template[first_start..];
-            log::debug!("start:{:?}   last_text:{:?}",node_position,last_text);
+            // log::debug!("start:{:?}   last_text:{:?}",node_position,last_text);
             let mut last_start = first_start+find_char_index(last_text,"\r\n").unwrap();
             let  last_end = last_start+2 ;
 
             let position = NodePosition::new("##", last_start, last_end);
-            log::debug!("set----start:{:?}   end:{:?}", node_position,position);
+            // log::debug!("set----start:{:?}   end:{:?}", node_position,position);
             let token_position = TokenPosition::build(&node_position, &position);
             token_position_list.push(token_position);
         //
@@ -336,7 +335,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
         }
     }
 
-    log::debug!("token_position_list: {:#?}", token_position_list);
+    // log::debug!("token_position_list: {:#?}", token_position_list);
 
     let mut read_index = 0;
     let read_end = template.len();
@@ -351,7 +350,7 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
         let first_name = &position.first_name;
         let last_name = &position.last_name;
 
-        log::debug!("---------- position first_name:{} last_name:{} first_start:{} last_end:{}",first_name,last_name,first_start,last_end);
+        // log::debug!("---------- position first_name:{} last_name:{} first_start:{} last_end:{}",first_name,last_name,first_start,last_end);
 
         if position.is_root(&token_position_list) {
             if read_index < first_start  {
@@ -365,11 +364,11 @@ pub fn parse_position(template:&str,read_start_index:usize) -> Result<Vec<TokenP
     if read_index<read_end{
 
         let text_position = TokenPosition::new_text(read_index+read_start_index,read_end+read_start_index);
-        log::debug!("---------- text_position:{:?}",text_position);
+        // log::debug!("---------- text_position:{:?}",text_position);
         position_list.push(text_position);
     }
 
-    log::debug!("position_list: {:#?}", position_list);
+    // log::debug!("position_list: {:#?}", position_list);
     Ok(position_list)
 }
 
@@ -386,11 +385,11 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
         let last_start = position.last_start;
         let last_end = position.last_end;
 
-        log::debug!(" first_name:{} last_name:{}  first_start:{} first_end:{} last_start:{} last_end:{}",first_name,last_name,first_start,first_end,last_start,last_end);
+        // log::debug!(" first_name:{} last_name:{}  first_start:{} first_end:{} last_start:{} last_end:{}",first_name,last_name,first_start,first_end,last_start,last_end);
 
         if first_name == "#text" || first_name =="<!--" {
 
-            log::debug!("text--first_start:{:?}   last_end:{:?} first_name:{:?} last_name:{:?}",first_start,last_start,first_name,last_name);
+            // log::debug!("text--first_start:{:?}   last_end:{:?} first_name:{:?} last_name:{:?}",first_start,last_start,first_name,last_name);
             let text =&template[first_start..last_end];
             let text_token = Tokenizer::new_text(text);
             tokens.push(text_token);
@@ -506,7 +505,7 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
         position_list_temp.push(position.clone());
     }
 
-    log::debug!("tokens--------------------------\n{:#?}",tokens);
+    // log::debug!("tokens--------------------------\n{:#?}",tokens);
 
     Ok(tokens)
 }
@@ -520,10 +519,10 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
     let first_end = position.first_end;
     let last_start = position.last_start;
     let last_end = position.last_end;
-    log::debug!("template:{:?} first_end：{} last_start：{}",template,first_end,last_start);
+    // log::debug!("template:{:?} first_end：{} last_start：{}",template,first_end,last_start);
 
     let child_text = &template[first_end..last_start];
-    log::debug!("child_text:{:?}",child_text);
+    // log::debug!("child_text:{:?}",child_text);
 
     if first_name =="#else" {
 
@@ -539,7 +538,7 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
         }
         let children_tokens = children_tokens_result.unwrap();
 
-        log::debug!("children tokens:{:?}",children_tokens);
+        // log::debug!("children tokens:{:?}",children_tokens);
         let if_token = IfBranch::new("true".to_string(),children_tokens);
         return Ok(if_token);
 
@@ -557,7 +556,7 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
             return Err(format!("Error: No valid end found for the expression following the tag '{}' in the input string.",first_name))
         }
 
-        log::debug!("text:{:?} expression_start:{} expression_end:{}",text,expression_start,expression_end);
+        // log::debug!("text:{:?} expression_start:{} expression_end:{}",text,expression_start,expression_end);
         let condition = &template[expression_start+1..expression_end].trim();
         let child_text = &template[expression_end+1..last_start];
 
@@ -573,7 +572,7 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
             return Err(children_tokens_result.unwrap_err());
         }
         let children_tokens = children_tokens_result.unwrap();
-        log::debug!("children_tokens:{:#?}",children_tokens);
+        // log::debug!("children_tokens:{:#?}",children_tokens);
 
         let if_token = IfBranch::new(condition.to_string(),children_tokens);
         return Ok(if_token);

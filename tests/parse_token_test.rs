@@ -95,10 +95,13 @@ pub fn parse(){
     context.insert("rust".to_string(), Value::String("rust 2025".to_string()));
     context.insert("list".to_string(),list);
 
-    if let Ok(output) = render(&template,&mut context){
-        println!("------------------------------------\n{}", output);
-        println!("----------------------------------------------------------------------")
+    for i in 0..2000{
+        if let Ok(output) = render(&template,&mut context){
+            println!("------------------------------------\n{}", output);
+            println!("----------------------------------------------------------------------")
+        }
     }
+
 
 }
 
@@ -130,7 +133,7 @@ pub fn parse_(){
 
 
     println!("template: {:?}", template);
-    for x in 0..1  {
+    for x in 0..1000  {
         let output_result = render_from_object(&template,&user);
         if let Ok(output) = output_result{
             println!("------------------------------------\n{}", output);

@@ -23,10 +23,10 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
             collection.to_string()
         };
 
-        log::debug!("element_key:{} collection_key:{}",element_key,collection_key);
-        // log::debug!("context:{:#?}", context);
-        log::debug!("----------children:{:#?}", children);
-        log::debug!("parse_foreach key:{:?} element:{} collection:{}",element_key,element,collection);
+        // log::debug!("element_key:{} collection_key:{}",element_key,collection_key);
+        // // log::debug!("context:{:#?}", context);
+        // log::debug!("----------children:{:#?}", children);
+        // log::debug!("parse_foreach key:{:?} element:{} collection:{}",element_key,element,collection);
 
 
 
@@ -94,7 +94,7 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                 let items:Vec<Value> = list.clone();
                 let size = list.len();
 
-                log::debug!("foreach context:{:?}",context);
+                // log::debug!("foreach context:{:?}",context);
                 let mut index = 0;
                 let mut count    = 1;
                 let mut has_next = true;
@@ -102,8 +102,8 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                 let mut  last = true;
                 for item in items {
 
-                    log::debug!("foreach item:{:?}",&item);
-                    log::debug!("foreach value is map:{:?}",item.is_object());
+                    // log::debug!("foreach item:{:?}",&item);
+                    // log::debug!("foreach value is map:{:?}",item.is_object());
 
 
                     if index==0 {
@@ -135,12 +135,12 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                     update_content(context, format!("{}.index",&element_key).as_str(), Value::Number(Number::from(index)));
                     update_content(context, format!("{}.last",&element_key).as_str(), Value::Bool(last));
 
-                    log::debug!("foreach context:{:#?}",&context);
+                    // log::debug!("foreach context:{:#?}",&context);
 
                     let mut child_output = String::new();
                     if let Some(child) = children{
                         for child_token in child {
-                            log::debug!("foreach children token:{:?}",&child_token);
+                            // log::debug!("foreach children token:{:?}",&child_token);
                             let result = parse_token(child_token,context);
                             if let Some(text) = result {
 
@@ -157,7 +157,7 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                     }
 
 
-                    log::debug!("output:{:#?}",&output);
+                    // log::debug!("output:{:#?}",&output);
                     index += 1;
                     count+=1;
                 }

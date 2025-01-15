@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-use lazy_static::lazy_static;
-use regex::Regex;
 use serde_json::{Map, Number, Value};
 use crate::expression::{expr_eval};
 use crate::parse::{update_content, variable_parse};
@@ -16,7 +14,7 @@ pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
         let k = variable_parse::extract_variable(&key);
         let mut v = variable_parse::normalize_variable_syntax(value.as_str(),context);
 
-        log::debug!("set key:{:?} value:{:?}",k,v);
+        // log::debug!("set key:{:?} value:{:?}",k,v);
 
         if let Some(key) = k{
 
@@ -71,7 +69,7 @@ pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
                 Value::String(v)
             };
 
-            log::debug!("---------------------------{:#?}",context);
+            // log::debug!("---------------------------{:#?}",context);
             update_content(context, &key, new_value);
 
         }

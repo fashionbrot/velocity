@@ -111,10 +111,13 @@ fn foreach_array_test(){
         project_list: vec![p1,p2],
     };
 
-
-    let output = render_from_object(&template,&entity);
-    if let Ok(output) = output {
-        println!("------------------------------------------------------------------\n{}", output);
-        println!("------------------------------------------------------------------");
+    for i in 0..1000{
+        let output = render_from_object(&template,&entity);
+        if let Ok(output) = output {
+            println!("------------------------------------------------------------------\n{}", output);
+            println!("------------------------------------------------------------------");
+        }
     }
+
+
 }
