@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Number, Value};
-use velocity::{ read_file, render, render_from_object};
-use velocity::token::token_parse;
-use velocity::token::token_parse::Tokenizer;
+use velocity_template::{ read_file, render, render_from_object};
+use velocity_template::token::token_parse;
+use velocity_template::token::token_parse::Tokenizer;
 use crate::log_config;
 
 

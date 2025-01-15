@@ -1,4 +1,4 @@
-use velocity::{read_file, render_default, render_from_object};
+use velocity_template::{read_file, render_default, render_from_object};
 use crate::log_config;
 
 #[test]

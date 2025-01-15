@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use velocity;
-use velocity::{read_file, render_from_object};
-use velocity::token::token_parse::get_tokens;
+use velocity_template;
+use velocity_template::{read_file, render_from_object};
+use velocity_template::token::token_parse::get_tokens;
 use crate::log_config;
 
 #[derive(Debug,Serialize,Deserialize)]

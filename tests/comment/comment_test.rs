@@ -1,7 +1,7 @@
 use crate::log_config;
 use lazy_static::lazy_static;
 use regex::Regex;
-use velocity::{read_file, render_default, render_default_path};
+use velocity_template::{read_file, render_default, render_default_path};
 
 #[test]
 pub fn marker_test() {

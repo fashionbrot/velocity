@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
-use velocity;
-use velocity::{read_file, render};
+use velocity_template;
+use velocity_template::{read_file, render};
 
 
 #[derive(Serialize, Deserialize, Debug)]
