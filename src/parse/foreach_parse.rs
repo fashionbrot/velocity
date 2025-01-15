@@ -54,11 +54,11 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                         last = true;
                     }
 
-                    update_content(context, "foreach.count", Value::Number(Number::from(count)));
-                    update_content(context, "foreach.first", Value::Bool(first));
-                    update_content(context, "foreach.hasNext", Value::Bool(has_next));
-                    update_content(context, "foreach.index", Value::Number(Number::from(index)));
-                    update_content(context, "foreach.last", Value::Bool(last));
+                    update_content(context, format!("{}.count",&element_key).as_str(), Value::Number(Number::from(count)));
+                    update_content(context, format!("{}.first",&element_key).as_str(), Value::Bool(first));
+                    update_content(context, format!("{}.hasNext",&element_key).as_str(), Value::Bool(has_next));
+                    update_content(context, format!("{}.index",&element_key).as_str(), Value::Number(Number::from(index)));
+                    update_content(context, format!("{}.last",&element_key).as_str(), Value::Bool(last));
 
                     let mut mv: serde_json::Map<String, Value> =Map::<String,Value>::new();
                     mv.insert(key.to_string(),value.clone());
@@ -129,12 +129,11 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                     }
 
 
-                    update_content(context, "foreach.count", Value::Number(Number::from(count)));
-                    update_content(context, "foreach.first", Value::Bool(first));
-                    update_content(context, "foreach.hasNext", Value::Bool(has_next));
-                    update_content(context, "foreach.index", Value::Number(Number::from(index)));
-                    update_content(context, "foreach.last", Value::Bool(last));
+                    update_content(context, format!("{}.count",&element_key).as_str(), Value::Number(Number::from(count)));
+                    update_content(context, format!("{}.first",&element_key).as_str(), Value::Bool(first));
+                    update_content(context, format!("{}.hasNext",&element_key).as_str(), Value::Bool(has_next));
                     update_content(context, format!("{}.index",&element_key).as_str(), Value::Number(Number::from(index)));
+                    update_content(context, format!("{}.last",&element_key).as_str(), Value::Bool(last));
 
                     log::debug!("foreach context:{:#?}",&context);
 

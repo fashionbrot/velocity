@@ -1,0 +1,6 @@
+#foreach($project in $project_list)
+${project.count}    project_name:${project.name}
+    #foreach($user in $project.user_list)
+    ${user.count}    user_name:${user.name}
+    #end
+#end
