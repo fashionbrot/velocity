@@ -1,0 +1,96 @@
+package ${packageOut}${entityOut};
+
+#if(${mybatisPlusEnable})
+import com.baomidou.mybatisplus.annotation.*;
+#end
+import com.fasterxml.jackson.annotation.JsonFormat;
+import org.springframework.format.annotation.DateTimeFormat;
+#if(${serialVersionUIDEnable})
+import java.io.Serializable;
+#end
+#if(${lombokEnable})
+import lombok.*;
+#end
+
+#if (${swagger2Enable})
+import io.swagger.annotations.ApiModel;
+import io.swagger.annotations.ApiModelProperty;
+#end
+#if(${swagger3Enable})
+import io.swagger.v3.oas.annotations.media.Schema;
+#end
+#if(${hasBigDecimal})
+import java.math.BigDecimal;
+#end
+import java.util.Date;
+
+/**
+* ${tableNameDescription}
+*
+#if(${author}!='')
+* @author ${author}
+#end
+*/
+#if(${mybatisPlusEnable})
+@TableName("${tableName}")
+#end
+#if(${swagger2Enable})
+@ApiModel(value = "${tableNameDescription}")
+#end
+#if(${swagger3Enable})
+@Schema(description = "${tableNameDescription}")
+#end
+#if(${lombokEnable})
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@EqualsAndHashCode(callSuper=false)
+#end
+public class ${className}${entitySuffix} #if($serialVersionUIDEnable)implements Serializable#end {
+    #if($serialVersionUIDEnable)
+    private static final long serialVersionUID = ${serialVersionUID}L;
+    #end
+
+#foreach($field in $tableFieldList)
+
+    #if (${swagger2Enable})
+    @ApiModelProperty(value = "${field.column_comment}")
+    #elseif(${swagger3Enable})
+    @Schema(description = "${field.column_comment}")
+    #else
+    /**
+    * ${field.column_comment}
+    */
+    #end
+    #if(${field.column_type}=='date' && ${field.column_type}== 'datetime')
+    @DateTimeFormat(pattern = "${dateTimeFormatValue}")
+    @JsonFormat(timezone = "GMT+8", pattern = "${dateTimeFormatValue}")
+    #end
+    #if(${field.column_type}=='date' && ${field.column_type}== 'date')
+    @DateTimeFormat(pattern = "${dateFormatValue}")
+    @JsonFormat(timezone = "GMT+8", pattern = "${dateFormatValue}")
+    #end
+    #if(${field.column_type}=='date' && ${field.column_type})== 'time')
+    @DateTimeFormat(pattern = "${timeFormatValue}")
+    @JsonFormat(timezone = "GMT+8", pattern = "${timeFormatValue}")
+    #end
+    #if(${mybatisPlusEnable})
+    #if(${field.is_primary})
+    @TableId(type = IdType.ASSIGN_ID)
+    #else
+    #if(${field.deleteLogic})
+    @TableLogic(value = "${tableLogicValue}", delval = "${tableLogicDeleteValue}")
+    #end
+    #if(${field.versionLogic})
+    @Version
+    #end
+    @TableField(value = "${field.column_name_keyword}"#if($field.insertFill), fill = FieldFill.INSERT#elseif($field.updateFill), fill = FieldFill.UPDATE#end)
+    #end
+    #end
+    private ${field.java_column_type} ${field.hump_column_name};
+
+#end
+
+
+}

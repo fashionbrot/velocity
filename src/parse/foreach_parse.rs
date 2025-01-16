@@ -76,16 +76,28 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                             if let Some(text) = result {
 
                                 let value = variable_parse::normalize_variable_syntax(text.as_str(),context);
-                                child_output.push_str(&value);
+
+                                if let Some(text) = text_parse::parse_string(&value){
+                                    if !text.trim().is_empty() {
+                                        child_output.push_str(&text);
+                                    }
+                                }else{
+                                    child_output.push_str(&value);
+                                }
+
+                                // child_output.push_str(&value);
                             }
                         }
                     }
 
                     if let Some(text) = text_parse::parse_string(&child_output){
-                        output.push_str(&text);
+                        if !text.trim().is_empty() {
+                            output.push_str(&text);
+                        }
                     }else{
                         output.push_str(&child_output);
                     }
+
                     index += 1;
                     count += 1;
                 }
@@ -144,14 +156,27 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
                             let result = parse_token(child_token,context);
                             if let Some(text) = result {
 
+                                log::debug!("foreach children text:{:?}",&text);
                                 let value = variable_parse::normalize_variable_syntax(text.as_str(),context);
-                                child_output.push_str(&value);
+
+                                if let Some(text) = text_parse::parse_string(&value){
+                                    if !text.trim().is_empty() {
+                                        child_output.push_str(&text);
+                                    }
+                                }else{
+                                    child_output.push_str(&value);
+                                }
+
                             }
                         }
                     }
 
+                    //
                     if let Some(text) = text_parse::parse_string(&child_output){
-                        output.push_str(&text);
+
+                        if !text.trim().is_empty() {
+                            output.push_str(&text);
+                        }
                     }else{
                         output.push_str(&child_output);
                     }
@@ -165,7 +190,16 @@ pub fn foreach_parse(token:&Tokenizer, context:&mut HashMap<String, Value>) -> O
             }
         }
 
-        return Some(output);
+        if let Some(text) = text_parse::parse_string(&output){
+            if !text.trim().is_empty() {
+                return Some(text);
+            }
+        }else{
+            return Some(output);
+        }
+
+
+
     }
 
     None

@@ -24,7 +24,7 @@ pub fn parse_string(text: &String) -> Option<String> {
         }
 
         if is_wrapped_with_crlf(text) {
-            return Some(format!("{}\n",remove_surrounding_crlf(text)));
+            return Some(format!("\n{}",remove_surrounding_crlf(text)));
         }else{
             return Some(text.to_string());
         }

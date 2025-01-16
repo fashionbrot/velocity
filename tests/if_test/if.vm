@@ -1,7 +1,10 @@
-#if(1 < 241/18*12/11)
-    $age>17
-#elseif($age<17)
-    $age<17
+#if (${swagger2Enable})
+@ApiModelProperty(value = "${field.column_comment}")
+#elseif(${swagger3Enable})
+@Schema(description = "${field.column_comment}")
 #else
-    default else
+/**
+* ${field.column_comment}
+*/
 #end
+1111111111111111111111111111111
