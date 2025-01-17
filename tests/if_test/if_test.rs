@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use velocity_template;
 use velocity_template::{read_file, render, render_from_path};
+use velocity_template::token::token_parse::get_tokens;
 use crate::log_config;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -183,6 +184,16 @@ fn test2(){
         "author": ""
     }
     "#;
+
+    let template_path = "tests/if_test/entity.vm";
+    let template = if let Ok(content) = read_file(template_path) {
+        content // 直接将 String 赋值给 template
+    } else {
+        String::new() // 返回一个空字符串作为默认值
+    };
+
+    let result = get_tokens(&template);
+    println!("{:#?}", result);
 
     // 解析 JSON 数据为 serde_json::Value
     let value: Value = serde_json::from_str(json_data).unwrap();

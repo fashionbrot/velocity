@@ -402,10 +402,8 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
                     let text = Tokenizer::new_set(key.trim(), value.trim());
                     tokens.push(text);
                 } else {
-                    //TODO
+                    return Err("#set Syntax error".to_string())
                 }
-            } else {
-                //TODO
             }
         }else if first_name == "#if" {
 
@@ -455,7 +453,9 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
             }
             let foreach_expression = &template[expression_start + 1..expression_end];
             let foreach_child_text = &template[expression_end + 1..last_start];
-
+            if foreach_child_text.is_empty() {
+                continue;
+            }
 
             let mut token_position_list = Vec::new();
             let token_position_result = parse_position(&foreach_child_text,0);
@@ -467,37 +467,21 @@ pub fn position_to_tokenizer(template:&str,position_list:& [TokenPosition])-> Re
                 return children_tokens_result;
             }
             let children_tokens = children_tokens_result.unwrap();
-
+            if children_tokens.is_empty() {
+                continue;
+            }
 
             // 按照 "in" 分割
-            let parts: Vec<&str> = foreach_expression.split(" in ").map(str::trim).collect();
+            let parts: Vec<&str> = foreach_expression.split("in").map(str::trim).collect();
             if parts.len() == 2 {
-                let variable = parts[0];
-                let collection = parts[1];
+                let variable = parts[0].trim();
+                let collection = parts[1].trim();
                 // println!("Variable: {}", variable);
                 // println!("Collection: {}", collection);
-
-                let foreach_text = &template[first_start..last_start];
-                let foreach_expression_end = foreach_text.find(")");
-                let mut foreach_child_text = "";
-                let mut foreach_child_text_start = 0;
-
-                if let Some(child_start) = foreach_expression_end {
-                    foreach_child_text_start = first_end + child_start + 1;
-                    // log::debug!("start:{} end:{}",foreach_child_text_start,last_start);
-                    foreach_child_text = &template[foreach_child_text_start..last_start];
-
-                    // log::debug!("foreach  foreach_child_text_start：{} last_start：{} foreach_child_text：{:?}",foreach_child_text_start,last_start,foreach_child_text);
-                } else {
-                    return Err("foreach Syntax error".to_string())
-                }
-
-
                 let foreach_token = Tokenizer::new_foreach(variable, collection, children_tokens);
                 tokens.push(foreach_token);
-
             } else {
-                return Err("foreach Syntax error".to_string())
+                return Err("#foreach Syntax error".to_string())
             }
 
 
@@ -578,7 +562,7 @@ pub fn parse_if(template:&str, position:&TokenPosition) -> Result<IfBranch,Strin
         return Ok(if_token);
     }
 
-    Err("Unknown token".to_string())
+    Err(format!("Unknown tag:{}",first_name))
 }
 
 

@@ -1,16 +1,1 @@
 #set($name = "Alice")
-#set($age = 25)
-#set($isMember = true)
-#set($cart = ["Book", "Pen", "Notebook"])
-#set($profile = [{"username":"张三","age":18},{"username":"李四","age":19}])
-#set($price=10)
-#set($discount = $price * 0.1)
-#set($isEligible = $age >= 18 && $isMember)
-name = ${name}
-age = ${age}
-isMember = ${isMember}
-cart = ${cart}
-profile = ${profile}
-discount = ${discount}
-isEligible = ${isEligible}
-profile = ${profile}
