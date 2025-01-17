@@ -58,6 +58,9 @@ pub fn set_parse(token :&Tokenizer, context: &mut HashMap<String, Value>) {
             } else if let Ok(map) = serde_json::from_str::<Map<String, Value>>(v.as_str()) {
                 let len = map.len();
                 update_content(context, format!("{}.size",&key).as_str(), Value::Number(Number::from(len)));
+                for (k,v) in &map {
+                    update_content(context, format!("{}.{}", &key,k.clone()).as_str(), v.clone());
+                }
                 Value::Object(map)
             } else if let Ok(string) = v.parse::<String>(){
                 Value::String(string)
