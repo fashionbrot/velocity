@@ -1,11 +1,13 @@
 [package]
 name = "velocity_template"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2021"
 authors = ["fashionbrot <fashionbrot@163.com>"]
 description = "velocity 相似模板引擎"
 license = "Apache-2.0"
-
+repository = "https://github.com/fashionbrot/velocity"
+readme = "README.md"
+keywords = ["velocity","template", "velocity_template"]
 [dependencies]
 regex = "1.11.1"
 lazy_static = "1.4.0"
