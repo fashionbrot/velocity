@@ -48,12 +48,12 @@ import java.util.Date;
 @EqualsAndHashCode(callSuper=false)
 #end
 public class ${className}${entitySuffix} #if($serialVersionUIDEnable)implements Serializable#end {
+
     #if($serialVersionUIDEnable)
     private static final long serialVersionUID = ${serialVersionUID}L;
     #end
 
 #foreach($field in $tableFieldList)
-
     #if (${swagger2Enable})
     @ApiModelProperty(value = "${field.column_comment}")
     #elseif(${swagger3Enable})
@@ -79,12 +79,12 @@ public class ${className}${entitySuffix} #if($serialVersionUIDEnable)implements 
     #if(${field.is_primary})
     @TableId(type = IdType.ASSIGN_ID)
     #else
-    #if(${field.deleteLogic})
-    @TableLogic(value = "${tableLogicValue}", delval = "${tableLogicDeleteValue}")
-    #end
-    #if(${field.versionLogic})
-    @Version
-    #end
+        #if(${field.deleteLogic})
+        @TableLogic(value = "${tableLogicValue}", delval = "${tableLogicDeleteValue}")
+        #end
+        #if(${field.versionLogic})
+        @Version
+        #end
     @TableField(value = "${field.column_name_keyword}"#if($field.insertFill), fill = FieldFill.INSERT#elseif($field.updateFill), fill = FieldFill.UPDATE#end)
     #end
     #end

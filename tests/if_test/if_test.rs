@@ -1,4 +1,8 @@
 use std::collections::HashMap;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use velocity_template;
@@ -204,6 +208,29 @@ fn test2(){
     let output = render_from_path("tests/if_test/entity.vm",&mut engine);
     if let Ok(output) = output {
         println!("output:----------------------------------------------------------------\n{}",output);
+
+        if let Ok(result ) = write_text_to_file("tests/if_test/entity.java",output.as_str()){
+            println!("result:{}",result);
+        }
     }
 }
 
+
+pub(crate) fn write_text_to_file(file_path: &str, content: &str) -> Result<String, String> {
+    let path = Path::new(file_path);
+    if let Some(parent_dir) = path.parent() {
+        if let Err(e) = fs::create_dir_all(parent_dir) {
+            return Err(format!("Failed to create directory {}: {}", parent_dir.display(), e));
+        }
+    }
+    // 打开文件，如果文件不存在则创建，如果存在则截断（覆盖）
+    let mut file = match File::create(file_path) {
+        Ok(file) => file,
+        Err(e) => return Err(format!("Failed to create file {}: {}", file_path, e)),
+    };
+    // 将内容写入文件
+    if let Err(e) = file.write_all(content.as_bytes()) {
+        return Err(format!("Failed to write to file {}: {}", file_path, e));
+    }
+    Ok("File written successfully.".to_string())
+}
